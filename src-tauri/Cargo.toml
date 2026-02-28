@@ -1,0 +1,31 @@
+[package]
+name = "magpieauth"
+version = "0.1.0"
+description = "MagpieAuth - Lightweight Local Password & 2FA Manager"
+authors = ["you"]
+edition = "2021"
+
+[lib]
+name = "magpieauth_lib"
+crate-type = ["staticlib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.31", features = ["bundled"] }
+aes-gcm = "0.10"
+argon2 = "0.5"
+totp-rs = { version = "5", features = ["otpauth", "gen_secret"] }
+uuid = { version = "1", features = ["v4"] }
+rand = "0.8"
+zeroize = { version = "1", features = ["derive"] }
+base32 = "0.5"
+chrono = "0.4"
+dirs = "5"
+thiserror = "1"

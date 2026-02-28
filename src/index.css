@@ -1,0 +1,176 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+@import "tailwindcss";
+
+/* ============================================================
+   MagpieAuth Design Tokens (CSS Custom Properties)
+   Theme: Classic Minimalist Black/White/Gray/Silver + Frosted Glass
+   ============================================================ */
+
+@theme {
+  --color-background: #0a0a0a;
+  --color-surface: #1a1a1a;
+  --color-surface-hover: #222222;
+  --color-border: #27272a;
+  --color-border-subtle: #1f1f23;
+  --color-primary: #f4f4f5;
+  --color-muted: #a1a1aa;
+  --color-muted-dark: #71717a;
+  --color-accent: #3f3f46;
+  --color-accent-hover: #52525b;
+  --color-danger: #7f1d1d;
+  --color-danger-text: #fca5a5;
+  --color-success: #166534;
+  --color-success-text: #86efac;
+}
+
+/* ============================================================
+   Base Styles
+   ============================================================ */
+
+body {
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  background-color: var(--color-background);
+  /* Premium dark glowing aura for glass to blur over */
+  background-image: 
+    radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.04) 0%, transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(255, 255, 255, 0.03) 0%, transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.01) 0%, transparent 60%);
+  background-attachment: fixed;
+  color: var(--color-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Prevent text selection on interactive UI */
+button,
+[role="button"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ============================================================
+   Scrollbar Styling (ultra-thin, minimalist)
+   ============================================================ */
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-accent);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent-hover);
+}
+
+/* ============================================================
+   Glassmorphism Utilities
+   ============================================================ */
+
+.glass {
+  background: rgba(20, 20, 20, 0.45);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-strong {
+  background: rgba(10, 10, 10, 0.65);
+  -webkit-backdrop-filter: blur(28px);
+  backdrop-filter: blur(28px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.glass-surface {
+  background: rgba(26, 26, 26, 0.3);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ============================================================
+   Animation Utilities
+   ============================================================ */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: 283;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.5;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 200ms ease-out forwards;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 250ms ease-out forwards;
+}
+
+/* ============================================================
+   Focus Styles (subtle underline, not harsh box)
+   ============================================================ */
+
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: rgba(244, 244, 245, 0.2);
+  box-shadow: 0 1px 0 0 rgba(244, 244, 245, 0.15);
+}
+
+/* ============================================================
+   Transitions
+   ============================================================ */
+
+.transition-smooth {
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
