@@ -70,6 +70,82 @@ pub fn retrieve_imk() -> Result<[u8; 32], CryptoError> {
 }
 
 // ============================================================
+// Pattern Lock Management (Argon2id Hash Storage)
+// ============================================================
+
+/// Hash a pattern string (e.g., "[0,1,5,9]") using Argon2id with a random salt
+pub fn hash_pattern(pattern: &str) -> Result<String, CryptoError> {
+    let mut salt = [0u8; 16];
+    OsRng.fill_bytes(&mut salt);
+
+    let params = argon2::Params::new(65536, 3, 4, Some(32))
+        .map_err(|e| CryptoError::KeyDerivationFailed(e.to_string()))?;
+    let argon2 = Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params);
+
+    let mut hash = [0u8; 32];
+    argon2
+        .hash_password_into(pattern.as_bytes(), &salt, &mut hash)
+        .map_err(|e| CryptoError::KeyDerivationFailed(e.to_string()))?;
+
+    // Combine salt and hash into a single hex string for easy storage
+    let salt_hex = hex::encode(salt);
+    let hash_hex = hex::encode(hash);
+    Ok(format!("{}:{}", salt_hex, hash_hex))
+}
+
+/// Verify a pattern string against a stored hash
+pub fn verify_pattern(pattern: &str, stored_hash: &str) -> Result<bool, CryptoError> {
+    let parts: Vec<&str> = stored_hash.split(':').collect();
+    if parts.len() != 2 {
+        return Ok(false);
+    }
+
+    let salt = hex::decode(parts[0]).unwrap_or_default();
+    let expected_hash = hex::decode(parts[1]).unwrap_or_default();
+
+    if salt.len() != 16 || expected_hash.len() != 32 {
+        return Ok(false);
+    }
+
+    let params = argon2::Params::new(65536, 3, 4, Some(32))
+        .map_err(|e| CryptoError::KeyDerivationFailed(e.to_string()))?;
+    let argon2 = Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params);
+
+    let mut actual_hash = [0u8; 32];
+    argon2
+        .hash_password_into(pattern.as_bytes(), &salt, &mut actual_hash)
+        .map_err(|e| CryptoError::KeyDerivationFailed(e.to_string()))?;
+
+    Ok(actual_hash == expected_hash.as_slice())
+}
+
+/// Store the pattern hash in AppData
+pub fn store_pattern(hash: &str) -> Result<(), CryptoError> {
+    let app_data =
+        dirs::data_dir().ok_or_else(|| CryptoError::CredentialError("No app data dir".into()))?;
+    let key_path = app_data.join("MagpieAuth").join(".pattern");
+    std::fs::create_dir_all(key_path.parent().unwrap())
+        .map_err(|e| CryptoError::CredentialError(e.to_string()))?;
+    std::fs::write(&key_path, hash).map_err(|e| CryptoError::CredentialError(e.to_string()))?;
+    Ok(())
+}
+
+/// Retrieve the pattern hash from AppData (returns None if not set)
+pub fn retrieve_pattern() -> Result<Option<String>, CryptoError> {
+    let app_data =
+        dirs::data_dir().ok_or_else(|| CryptoError::CredentialError("No app data dir".into()))?;
+    let key_path = app_data.join("MagpieAuth").join(".pattern");
+
+    if !key_path.exists() {
+        return Ok(None);
+    }
+
+    let data = std::fs::read_to_string(&key_path)
+        .map_err(|e| CryptoError::CredentialError(e.to_string()))?;
+    Ok(Some(data.trim().to_string()))
+}
+
+// ============================================================
 // Field-Level AES-256-GCM Encryption
 // ============================================================
 

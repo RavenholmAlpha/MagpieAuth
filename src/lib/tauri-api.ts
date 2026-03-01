@@ -64,6 +64,22 @@ export async function verifySystemAuth(): Promise<boolean> {
   return invoke<boolean>("verify_system_auth");
 }
 
+export async function setPatternLock(pattern: string): Promise<void> {
+  return invoke<void>("set_pattern_lock", { pattern });
+}
+
+export async function verifyPatternLock(pattern: string): Promise<boolean> {
+  return invoke<boolean>("verify_pattern_lock", { pattern });
+}
+
+export async function hasPatternLock(): Promise<boolean> {
+  return invoke<boolean>("has_pattern_lock");
+}
+
+export async function toggleWindowVisibility(): Promise<void> {
+  return invoke<void>("toggle_window_visibility");
+}
+
 // ============================================================
 // Export / Import
 // ============================================================

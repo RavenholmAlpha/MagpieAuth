@@ -1,15 +1,47 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Download, Upload, Info, Shield } from "lucide-react";
+import { X, Download, Upload, Info, Shield, Clock, Globe } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import type { LockMode, AuthMethod } from "../App";
 
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
   onExport: () => void;
   onImport: () => void;
+  lockMode: LockMode;
+  onLockModeChange: (mode: LockMode) => void;
+  lockTimeoutMs: number;
+  onLockTimeoutChange: (ms: number) => void;
+  authMethod: AuthMethod;
+  onAuthMethodChange: (method: AuthMethod) => void;
+  onOpenPatternSetup: () => void;
+  globalShortcut: string;
+  onGlobalShortcutChange: (shortcut: string) => void;
 }
 
-export function SettingsPanel({ isOpen, onClose, onExport, onImport }: SettingsPanelProps) {
+export function SettingsPanel({ 
+  isOpen, 
+  onClose, 
+  onExport, 
+  onImport,
+  lockMode,
+  onLockModeChange,
+  lockTimeoutMs,
+  onLockTimeoutChange,
+  authMethod,
+  onAuthMethodChange,
+  onOpenPatternSetup,
+  globalShortcut,
+  onGlobalShortcutChange
+}: SettingsPanelProps) {
+  const { t, i18n } = useTranslation();
+
+  const handleLanguageChange = (lang: string) => {
+    i18n.changeLanguage(lang);
+    localStorage.setItem("magpie_language", lang);
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -36,7 +68,7 @@ export function SettingsPanel({ isOpen, onClose, onExport, onImport }: SettingsP
             {/* Header */}
             <div className="relative flex items-center justify-center px-6 pt-5 pb-4 border-b border-white/5 shrink-0">
               <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-white/10" />
-              <h2 className="text-[17px] font-semibold text-primary mt-1">Settings</h2>
+              <h2 className="text-[17px] font-semibold text-primary mt-1">{t("settings.title")}</h2>
               <button
                 onClick={onClose}
                 className="absolute right-6 top-1/2 -translate-y-1/2 mt-1 w-8 h-8 rounded-full flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.1] transition-colors duration-200 cursor-pointer shrink-0"
@@ -48,10 +80,38 @@ export function SettingsPanel({ isOpen, onClose, onExport, onImport }: SettingsP
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+              
+              {/* Language */}
+              <section>
+                <h3 className="text-[11px] font-semibold text-primary/70 uppercase tracking-[0.1em] ml-1 mb-3">
+                  {t("settings.language")}
+                </h3>
+                <div className="rounded-2xl glass-surface border-white/5 shadow-inner p-5 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-muted" strokeWidth={1.5} />
+                    <span className="text-xs text-primary/80">{t("settings.chooseLanguage")}</span>
+                  </div>
+                  <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+                    <button
+                      onClick={() => handleLanguageChange("en")}
+                      className={`py-1.5 px-3 rounded-lg text-xs font-medium transition-all duration-200 ${i18n.language === "en" ? "bg-white/10 text-primary shadow-sm" : "text-muted-dark hover:text-muted"}`}
+                    >
+                      English
+                    </button>
+                    <button
+                      onClick={() => handleLanguageChange("zh")}
+                      className={`py-1.5 px-3 rounded-lg text-xs font-medium transition-all duration-200 ${i18n.language === "zh" ? "bg-white/10 text-primary shadow-sm" : "text-muted-dark hover:text-muted"}`}
+                    >
+                      中文
+                    </button>
+                  </div>
+                </div>
+              </section>
+
               {/* Data Management */}
               <section>
                 <h3 className="text-[11px] font-semibold text-primary/70 uppercase tracking-[0.1em] ml-1 mb-3">
-                  Data Management
+                  {t("settings.dataManagement")}
                 </h3>
                 <div className="space-y-2">
                   <button
@@ -62,8 +122,8 @@ export function SettingsPanel({ isOpen, onClose, onExport, onImport }: SettingsP
                   >
                     <Download className="w-4 h-4 text-muted group-hover:text-primary transition-colors" strokeWidth={1.5} />
                     <div className="text-left">
-                      <p className="text-sm text-primary/90">Export Vault</p>
-                      <p className="text-[10px] text-muted-dark mt-0.5">Create encrypted .magpie backup</p>
+                      <p className="text-sm text-primary/90">{t("settings.exportVault")}</p>
+                      <p className="text-[10px] text-muted-dark mt-0.5">{t("settings.exportDesc")}</p>
                     </div>
                   </button>
                   <button
@@ -74,44 +134,160 @@ export function SettingsPanel({ isOpen, onClose, onExport, onImport }: SettingsP
                   >
                     <Upload className="w-4 h-4 text-muted group-hover:text-primary transition-colors" strokeWidth={1.5} />
                     <div className="text-left">
-                      <p className="text-sm text-primary/90">Import Vault</p>
-                      <p className="text-[10px] text-muted-dark mt-0.5">Restore from .magpie backup</p>
+                      <p className="text-sm text-primary/90">{t("settings.importVault")}</p>
+                      <p className="text-[10px] text-muted-dark mt-0.5">{t("settings.importDesc")}</p>
                     </div>
                   </button>
                 </div>
               </section>
 
-              {/* Security */}
+              {/* Security & Auto-Lock */}
               <section>
                 <h3 className="text-[11px] font-semibold text-primary/70 uppercase tracking-[0.1em] ml-1 mb-3">
-                  Security
+                  {t("settings.securityAutoLock")}
+                </h3>
+                <div className="space-y-4 rounded-2xl glass-surface border-white/5 shadow-inner p-5">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Shield className="w-4 h-4 text-muted" strokeWidth={1.5} />
+                      <span className="text-xs text-primary/80">{t("settings.authMethod")}</span>
+                    </div>
+
+                    <div className="flex bg-black/40 p-1 rounded-xl border border-white/5 mb-2">
+                       <button
+                         onClick={() => onAuthMethodChange("system")}
+                         className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all duration-200 ${authMethod === "system" ? "bg-white/10 text-primary shadow-sm" : "text-muted-dark hover:text-muted"}`}
+                       >
+                         {t("settings.systemAuth")}
+                       </button>
+                       <button
+                         onClick={() => onAuthMethodChange("pattern")}
+                         className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all duration-200 ${authMethod === "pattern" ? "bg-white/10 text-primary shadow-sm" : "text-muted-dark hover:text-muted"}`}
+                       >
+                         {t("settings.patternAuth")}
+                       </button>
+                    </div>
+                    
+                    <AnimatePresence>
+                      {authMethod === "pattern" && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                        >
+                           <button onClick={onOpenPatternSetup} className="w-full py-2 bg-white/[0.05] hover:bg-white/[0.08] active:bg-white/[0.04] transition-colors border border-white/[0.05] shadow-sm rounded-lg text-xs font-medium text-primary cursor-pointer mb-2">
+                             {t("settings.setPattern")}
+                           </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <p className="text-[10px] text-muted-dark leading-relaxed mb-4">
+                      {authMethod === "system" ? t("settings.systemAuthDesc") : t("settings.patternAuthDesc")}
+                    </p>
+
+                    <div className="h-px w-full bg-white/5 my-3" />
+
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock className="w-4 h-4 text-muted" strokeWidth={1.5} />
+                      <span className="text-xs text-primary/80">{t("settings.autoLockBehavior")}</span>
+                    </div>
+                    
+                    {/* Mode Selector */}
+                    <div className="grid grid-cols-3 gap-2 bg-black/40 p-1 rounded-xl border border-white/5">
+                      {(["strict", "normal", "relaxed"] as LockMode[]).map((mode) => (
+                        <button
+                          key={mode}
+                          onClick={() => onLockModeChange(mode)}
+                          className={`py-1.5 px-2 rounded-lg text-xs font-medium transition-all duration-200 capitalize
+                            ${lockMode === mode 
+                              ? "bg-white/10 text-primary shadow-sm" 
+                              : "text-muted-dark hover:text-muted hover:bg-white/5"}`}
+                        >
+                          {t(`settings.${mode}`)}
+                        </button>
+                      ))}
+                    </div>
+
+                    <p className="text-[10px] text-muted-dark leading-relaxed">
+                      {lockMode === "strict" && t("settings.strictDesc")}
+                      {lockMode === "normal" && t("settings.normalDesc")}
+                      {lockMode === "relaxed" && t("settings.relaxedDesc")}
+                    </p>
+
+                    {/* Timeout Slider (Hidden in Relaxed mode) */}
+                    <AnimatePresence>
+                      {lockMode !== "relaxed" && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="pt-2 overflow-hidden"
+                        >
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-[11px] text-muted">{t("settings.idleTimeout")}</span>
+                            <span className="text-[11px] text-primary/80 font-mono">
+                              {lockTimeoutMs / 1000}s
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min="15"
+                            max="300"
+                            step="15"
+                            value={lockTimeoutMs / 1000}
+                            onChange={(e) => onLockTimeoutChange(parseInt(e.target.value) * 1000)}
+                            className="w-full h-1.5 bg-black/40 rounded-lg appearance-none cursor-pointer
+                                     [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 
+                                     [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full 
+                                     [&::-webkit-slider-thumb]:bg-white/80 [&::-webkit-slider-thumb]:shadow-md"
+                          />
+                          <div className="flex justify-between mt-1 px-1">
+                            <span className="text-[9px] text-muted-dark">15s</span>
+                            <span className="text-[9px] text-muted-dark">5m</span>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              </section>
+
+              {/* General / Advanced Settings */}
+              <section>
+                <h3 className="text-[11px] font-semibold text-primary/70 uppercase tracking-[0.1em] ml-1 mb-3">
+                  {t("settings.advanced")}
                 </h3>
                 <div className="rounded-2xl glass-surface border-white/5 shadow-inner p-5">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Shield className="w-4 h-4 text-muted" strokeWidth={1.5} />
-                    <span className="text-xs text-primary/80">System Authentication</span>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-xs text-primary/80">{t("settings.globalShortcut")}</span>
+                    <input
+                      type="text"
+                      className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs text-primary/90 font-mono tracking-wide placeholder:text-muted-dark focus:outline-none focus:border-white/20 transition-colors"
+                      value={globalShortcut}
+                      onChange={(e) => onGlobalShortcutChange(e.target.value)}
+                      placeholder="e.g. CommandOrControl+Shift+L"
+                      title={t("settings.globalShortcutDesc")}
+                    />
+                    <p className="text-[10px] text-muted-dark mt-1 leading-relaxed">
+                      {t("settings.globalShortcutDesc")}
+                    </p>
                   </div>
-                  <p className="text-[10px] text-muted-dark leading-relaxed">
-                    MagpieAuth uses your system's PIN / Windows Hello for identity verification.
-                    Passwords are encrypted with AES-256-GCM and the master key is protected
-                    by your OS credential manager.
-                  </p>
                 </div>
               </section>
 
               {/* About */}
               <section>
                 <h3 className="text-[11px] font-semibold text-primary/70 uppercase tracking-[0.1em] ml-1 mb-3">
-                  About
+                  {t("settings.about")}
                 </h3>
                 <div className="rounded-2xl glass-surface border-white/5 shadow-inner p-5">
                   <div className="flex items-center gap-2 mb-2">
                     <Info className="w-4 h-4 text-muted" strokeWidth={1.5} />
-                    <span className="text-xs text-primary/80">MagpieAuth v0.1.0</span>
+                    <span className="text-xs text-primary/80">{t("app.title")} v0.1.0</span>
                   </div>
                   <p className="text-[10px] text-muted-dark leading-relaxed">
-                    A lightweight, local-first password & 2FA manager. All data stays on your device.
-                    No cloud. No telemetry. Just security.
+                    {t("settings.aboutDesc")}
                   </p>
                 </div>
               </section>

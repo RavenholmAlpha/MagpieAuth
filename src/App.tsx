@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, Upload } from "lucide-react";
+import { Lock } from "lucide-react";
 import { LockScreen } from "./components/LockScreen";
+import { TitleBar } from "./components/TitleBar";
 import { Header } from "./components/Header";
 import { VaultList } from "./components/VaultList";
 import { DetailDrawer } from "./components/DetailDrawer";
@@ -9,8 +10,13 @@ import { AddEditDialog } from "./components/AddEditDialog";
 import { ExportImportDialog } from "./components/ExportImportDialog";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { useIdleLock } from "./hooks/useIdleLock";
-import { getVaultItems, searchItems } from "./lib/tauri-api";
+import { getVaultItems, searchItems, toggleWindowVisibility } from "./lib/tauri-api";
 import type { VaultItemBase } from "./types";
+import { PatternSetupDialog } from "./components/PatternSetupDialog";
+import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
+
+export type LockMode = "strict" | "normal" | "relaxed";
+export type AuthMethod = "system" | "pattern";
 
 function App() {
   // ======== State ========
@@ -19,13 +25,62 @@ function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState<VaultItemBase | null>(null);
 
-  // Dialog states
+  // Settings state
+  const [lockMode, setLockMode] = useState<LockMode>(() => {
+    return (localStorage.getItem("magpie_lock_mode") as LockMode) || "strict";
+  });
+  const [lockTimeoutMs, setLockTimeoutMs] = useState<number>(() => {
+    const saved = localStorage.getItem("magpie_lock_timeout");
+    return saved ? parseInt(saved, 10) : 30000; // Default 30s
+  });
+
   const [showAddEdit, setShowAddEdit] = useState(false);
   const [editingItem, setEditingItem] = useState<VaultItemBase | null>(null);
   const [showExportImport, setShowExportImport] = useState(false);
+  const [showPatternSetup, setShowPatternSetup] = useState(false);
   const [exportImportMode, setExportImportMode] = useState<"export" | "import">("export");
   const [showSettings, setShowSettings] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const [authMethod, setAuthMethod] = useState<AuthMethod>(() => {
+    return (localStorage.getItem("magpie_auth_method") as AuthMethod) || "system";
+  });
+
+  const [globalShortcut, setGlobalShortcut] = useState<string>(() => {
+    return localStorage.getItem("magpie_global_shortcut") || "CommandOrControl+Shift+L";
+  });
+
+  // ======== Global Shortcut Registration ========
+  useEffect(() => {
+    let registered = false;
+
+    const setupShortcut = async () => {
+      try {
+        await unregister(globalShortcut); // Ensure it's clean before registering
+      } catch (e) {
+        // Ignore unregister errors if it wasn't registered
+      }
+
+      try {
+        await register(globalShortcut, async (event) => {
+          if (event.state === "Pressed") {
+            await toggleWindowVisibility();
+          }
+        });
+        registered = true;
+      } catch (e) {
+        console.error("Failed to register global shortcut:", e);
+      }
+    };
+
+    setupShortcut();
+
+    return () => {
+      if (registered) {
+        unregister(globalShortcut).catch(console.error);
+      }
+    };
+  }, [globalShortcut]);
 
   // ======== Data Loading ========
   const loadItems = useCallback(async () => {
@@ -69,16 +124,25 @@ function App() {
     }
   }, [isLocked, loadItems]);
 
-  // ======== Auto-Lock on Idle (5 minutes) ========
+  // ======== Auto-Lock Handlers ========
   const handleLock = useCallback(() => {
+    if (isLocked) return;
     setIsLocked(true);
     setSelectedItem(null);
     setShowAddEdit(false);
     setShowSettings(false);
     setShowExportImport(false);
-  }, []);
+  }, [isLocked]);
 
-  useIdleLock(handleLock, 5 * 60 * 1000); // 5 minutes
+  useIdleLock(handleLock, lockMode, lockTimeoutMs);
+
+  // Sync settings to localStorage
+  useEffect(() => {
+    localStorage.setItem("magpie_lock_mode", lockMode);
+    localStorage.setItem("magpie_lock_timeout", lockTimeoutMs.toString());
+    localStorage.setItem("magpie_auth_method", authMethod);
+    localStorage.setItem("magpie_global_shortcut", globalShortcut);
+  }, [lockMode, lockTimeoutMs, authMethod, globalShortcut]);
 
   // ======== Handlers ========
   const handleUnlock = () => {
@@ -144,12 +208,16 @@ function App() {
           transition={{ duration: 0.4, delay: 0.2 }}
           className="flex flex-col w-full h-full absolute inset-0"
         >
+        {/* Window Title Bar */}
+        <TitleBar />
+
         {/* Header (Top Navigation & Search) */}
         <Header
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onAddNew={handleAddNew}
           onOpenSettings={() => setShowSettings(!showSettings)}
+          onManualLock={handleLock}
         />
 
         {/* Main Content Area */}
@@ -169,6 +237,15 @@ function App() {
         onClose={() => setShowSettings(false)}
         onExport={handleOpenExport}
         onImport={handleOpenImport}
+        lockMode={lockMode}
+        onLockModeChange={setLockMode}
+        lockTimeoutMs={lockTimeoutMs}
+        onLockTimeoutChange={setLockTimeoutMs}
+        authMethod={authMethod}
+        onAuthMethodChange={setAuthMethod}
+        onOpenPatternSetup={() => { setShowSettings(false); setShowPatternSetup(true); }}
+        globalShortcut={globalShortcut}
+        onGlobalShortcutChange={setGlobalShortcut}
       />
 
       {/* Detail Drawer */}
@@ -193,6 +270,16 @@ function App() {
         mode={exportImportMode}
         onClose={() => setShowExportImport(false)}
         onComplete={handleExportImportComplete}
+      />
+
+      {/* Pattern Setup Dialog */}
+      <PatternSetupDialog
+        isOpen={showPatternSetup}
+        onClose={() => setShowPatternSetup(false)}
+        onSetSuccess={() => {
+          setShowPatternSetup(false);
+          showToast("Pattern lock updated successfully!");
+        }}
       />
 
       {/* Toast */}

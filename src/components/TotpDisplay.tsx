@@ -3,12 +3,13 @@ import { getRemainingSeconds } from "../lib/tauri-api";
 
 interface TotpDisplayProps {
   itemId: string;
-  getTotpCode: (id: string) => Promise<{ success: boolean; code?: string; validUntil?: number; error?: string }>;
+  getTotpCode: (id: string) => Promise<{ success: boolean; code?: string | null; validUntil?: number | null; step?: number | null; error?: string | null }>;
 }
 
 export function TotpDisplay({ itemId, getTotpCode }: TotpDisplayProps) {
   const [code, setCode] = useState<string | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState(30);
+  const [period, setPeriod] = useState(30);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const fetchCode = useCallback(async () => {
@@ -26,15 +27,14 @@ export function TotpDisplay({ itemId, getTotpCode }: TotpDisplayProps) {
           setIsTransitioning(false);
         }, 150);
 
-        try {
-          const remaining = await getRemainingSeconds();
+        if (result.step) {
+          setPeriod(result.step);
+        }
+
+        if (result.validUntil) {
+          const now = Date.now();
+          const remaining = Math.max(0, Math.floor((result.validUntil - now) / 1000));
           setRemainingSeconds(remaining);
-        } catch {
-          if (result.validUntil) {
-            const now = Date.now();
-            const remaining = Math.max(0, Math.floor((result.validUntil - now) / 1000));
-            setRemainingSeconds(remaining);
-          }
         }
       }
     } catch {
@@ -53,15 +53,15 @@ export function TotpDisplay({ itemId, getTotpCode }: TotpDisplayProps) {
       setRemainingSeconds((prev) => {
         if (prev <= 1) {
           fetchCode();
-          return 30;
+          return period;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [fetchCode]);
+  }, [fetchCode, period]);
 
-  const progress = remainingSeconds / 30;
+  const progress = remainingSeconds / period;
   const circumference = 2 * Math.PI * 34; // r=34
   const dashoffset = circumference * (1 - progress);
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Download, Upload, FileKey } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { exportVault, importVault } from "../lib/tauri-api";
 
 interface ExportImportDialogProps {
@@ -11,6 +12,7 @@ interface ExportImportDialogProps {
 }
 
 export function ExportImportDialog({ isOpen, mode, onClose, onComplete }: ExportImportDialogProps) {
+  const { t } = useTranslation();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [filePath, setFilePath] = useState("");
@@ -40,7 +42,7 @@ export function ExportImportDialog({ isOpen, mode, onClose, onComplete }: Export
       
       if (path) {
         await exportVault(password, path);
-        onComplete("Vault exported successfully!");
+        onComplete(t("exportImport.exportSuccess"));
         onClose();
       }
     } catch (e: any) {
@@ -68,7 +70,7 @@ export function ExportImportDialog({ isOpen, mode, onClose, onComplete }: Export
 
       if (path) {
         const count = await importVault(path as string, password);
-        onComplete(`Successfully imported ${count} items!`);
+        onComplete(`${count} ${t("exportImport.importSuccess")}`);
         onClose();
       }
     } catch (e: any) {
@@ -107,7 +109,7 @@ export function ExportImportDialog({ isOpen, mode, onClose, onComplete }: Export
                   <Upload className="w-4 h-4 text-muted" strokeWidth={1.5} />
                 )}
                 <h2 className="text-[17px] font-semibold text-primary">
-                  {mode === "export" ? "Export Vault" : "Import Vault"}
+                  {mode === "export" ? t("exportImport.exportTitle") : t("exportImport.importTitle")}
                 </h2>
               </div>
               <button
@@ -124,21 +126,19 @@ export function ExportImportDialog({ isOpen, mode, onClose, onComplete }: Export
               <div className="flex items-center gap-3 p-4 rounded-2xl glass-surface border-white/5 shadow-inner">
                 <FileKey className="w-5 h-5 text-muted shrink-0" strokeWidth={1.5} />
                 <p className="text-xs text-muted leading-relaxed">
-                  {mode === "export"
-                    ? "Your vault will be encrypted with AES-256-GCM using your password. Keep this password safe!"
-                    : "Enter the password you used when exporting the backup file."}
+                  {mode === "export" ? t("exportImport.exportDesc") : t("exportImport.importDesc")}
                 </p>
               </div>
 
               <div className="space-y-2">
                 <label className="text-[11px] font-semibold text-primary/70 uppercase tracking-[0.1em] ml-1">
-                  {mode === "export" ? "Encryption Password" : "Decryption Password"}
+                  {t("exportImport.passwordLabel")}
                 </label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter a strong password"
+                  placeholder={t("exportImport.passwordPlaceholder")}
                   className="w-full px-4 py-3.5 rounded-xl text-[15px]
                              glass-surface border-white/5 shadow-inner text-primary
                              placeholder:text-muted-dark/50
@@ -188,7 +188,7 @@ export function ExportImportDialog({ isOpen, mode, onClose, onComplete }: Export
                            bg-white/[0.03] hover:bg-white/[0.06] border border-border-subtle
                            transition-colors duration-200 cursor-pointer"
               >
-                Cancel
+                {t("exportImport.cancel")}
               </button>
               <button
                 onClick={mode === "export" ? handleExport : handleImport}
@@ -200,10 +200,10 @@ export function ExportImportDialog({ isOpen, mode, onClose, onComplete }: Export
                            disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {processing
-                  ? "Processing..."
+                  ? "..."
                   : mode === "export"
-                  ? "Export"
-                  : "Import"}
+                  ? t("exportImport.exportBtn")
+                  : t("exportImport.importBtn")}
               </button>
             </div>
           </motion.div>

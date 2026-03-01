@@ -21,9 +21,10 @@ export interface PasswordResponse {
 
 export interface TotpCodeResponse {
   success: boolean;
-  code?: string;
-  validUntil?: number;
-  error?: string;
+  code: string | null;
+  validUntil: number | null;
+  step: number | null;
+  error: string | null;
 }
 
 export interface OtpauthParseResult {

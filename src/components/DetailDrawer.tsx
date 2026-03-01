@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Eye, EyeOff, Copy, Trash2, Edit3, Clock, Key, User } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn, copyToClipboard, formatDate, getInitial, stringToColorClass } from "../lib/utils";
 import { getPasswordPlaintext, getTotpCode, deleteItem } from "../lib/tauri-api";
 import { TotpDisplay } from "./TotpDisplay";
@@ -14,6 +15,7 @@ interface DetailDrawerProps {
 }
 
 export function DetailDrawer({ item, onClose, onEdit, onDeleted }: DetailDrawerProps) {
+  const { t } = useTranslation();
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [password, setPassword] = useState<string | null>(null);
   const [passwordCopied, setPasswordCopied] = useState(false);
@@ -136,7 +138,7 @@ export function DetailDrawer({ item, onClose, onEdit, onDeleted }: DetailDrawerP
                   <div className="flex items-center gap-2 mb-3">
                     <Clock className="w-4 h-4 text-muted" strokeWidth={1.5} />
                     <span className="text-[11px] font-semibold text-primary/70 uppercase tracking-[0.1em] ml-1">
-                      Two-Factor Code
+                      {t("detailDrawer.authenticator")}
                     </span>
                   </div>
                   <TotpDisplay itemId={item.id} getTotpCode={getTotpCode} />
@@ -157,12 +159,12 @@ export function DetailDrawer({ item, onClose, onEdit, onDeleted }: DetailDrawerP
                         animate={{ scale: 1 }}
                         className="text-success-text"
                       >
-                        ✓ Copied
+                        ✓ {t("detailDrawer.copied")}
                       </motion.span>
                     ) : (
                       <>
                         <Copy className="w-3.5 h-3.5" strokeWidth={1.5} />
-                        Copy Code
+                        {t("detailDrawer.copy")}
                       </>
                     )}
                   </button>
@@ -175,7 +177,7 @@ export function DetailDrawer({ item, onClose, onEdit, onDeleted }: DetailDrawerP
                   <div className="flex items-center gap-2 mb-3">
                     <Key className="w-4 h-4 text-muted" strokeWidth={1.5} />
                     <span className="text-[11px] font-semibold text-primary/70 uppercase tracking-[0.1em] ml-1">
-                      Password
+                      {t("detailDrawer.password")}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -273,7 +275,7 @@ export function DetailDrawer({ item, onClose, onEdit, onDeleted }: DetailDrawerP
                            transition-all duration-200 cursor-pointer"
               >
                 <Edit3 className="w-3.5 h-3.5" strokeWidth={1.5} />
-                Edit
+                {t("detailDrawer.edit")}
               </button>
 
               {showDeleteConfirm ? (
@@ -285,14 +287,14 @@ export function DetailDrawer({ item, onClose, onEdit, onDeleted }: DetailDrawerP
                                hover:bg-danger/50 transition-all duration-200 cursor-pointer
                                disabled:opacity-50"
                   >
-                    {isDeleting ? "..." : "Confirm"}
+                    {isDeleting ? "..." : t("detailDrawer.confirmDelete")}
                   </button>
                   <button
                     onClick={() => setShowDeleteConfirm(false)}
                     className="flex-1 py-2.5 rounded-lg text-xs text-muted-dark
                                hover:bg-white/[0.04] transition-all duration-200 cursor-pointer"
                   >
-                    Cancel
+                    {t("detailDrawer.cancel")}
                   </button>
                 </div>
               ) : (
@@ -303,7 +305,7 @@ export function DetailDrawer({ item, onClose, onEdit, onDeleted }: DetailDrawerP
                              hover:bg-danger/20 transition-all duration-200 cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" strokeWidth={1.5} />
-                  Delete
+                  {t("detailDrawer.delete")}
                 </button>
               )}
             </div>

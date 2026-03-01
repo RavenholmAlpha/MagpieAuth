@@ -8,36 +8,89 @@ pub struct TotpCodeResponse {
     pub success: bool,
     pub code: Option<String>,
     pub valid_until: Option<i64>,
+    pub step: Option<u64>,
     pub error: Option<String>,
 }
 
 /// Generate a TOTP code from a Base32-encoded secret
 pub fn generate_totp_code(secret_base32: &str) -> TotpCodeResponse {
     match generate_totp_internal(secret_base32) {
-        Ok((code, valid_until)) => TotpCodeResponse {
+        Ok((code, valid_until, step)) => TotpCodeResponse {
             success: true,
             code: Some(code),
             valid_until: Some(valid_until),
+            step: Some(step),
             error: None,
         },
         Err(e) => TotpCodeResponse {
             success: false,
             code: None,
             valid_until: None,
+            step: None,
             error: Some(e),
         },
     }
 }
 
-fn generate_totp_internal(secret_base32: &str) -> Result<(String, i64), String> {
+fn generate_totp_internal(secret_str: &str) -> Result<(String, i64, u64), String> {
+    let mut raw_secret = secret_str.to_string();
+    let mut algorithm = Algorithm::SHA1;
+    let mut digits = 6;
+    let mut step = 30;
+
+    // If it's a full URI (e.g. from QR scan saved in DB), extract the custom parameters!
+    // We parse manually because totp_rs::TOTP::from_url strictly rejects standard 80-bit length secrets.
+    if secret_str.starts_with("otpauth://totp/") {
+        let without_scheme = &secret_str["otpauth://totp/".len()..];
+        let query_part = if let Some(idx) = without_scheme.find('?') {
+            &without_scheme[idx + 1..]
+        } else {
+            ""
+        };
+
+        for param in query_part.split('&') {
+            if let Some((k, v)) = param.split_once('=') {
+                match k {
+                    "secret" => raw_secret = v.replace("%3D", "=").replace("%20", ""),
+                    "digits" => {
+                        if let Ok(d) = v.parse::<usize>() {
+                            digits = d;
+                        }
+                    }
+                    "period" => {
+                        if let Ok(p) = v.parse::<u64>() {
+                            step = p;
+                        }
+                    }
+                    "algorithm" => {
+                        algorithm = match v.to_uppercase().as_str() {
+                            "SHA256" => Algorithm::SHA256,
+                            "SHA512" => Algorithm::SHA512,
+                            _ => Algorithm::SHA1,
+                        };
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
     // Remove padding to ensure base32 crate decodes it properly
-    let unpadded = secret_base32.trim_end_matches('=');
+    let unpadded = raw_secret.trim_end_matches('=');
     let secret_bytes = base32::decode(base32::Alphabet::Rfc4648 { padding: false }, unpadded)
         .ok_or_else(|| "Invalid base32 secret".to_string())?;
 
     // Use new_unchecked to bypass the strict 128-bit minimum key length check
     // This allows standard 16-char (80-bit) Google Authenticator secrets to work
-    let totp = TOTP::new_unchecked(Algorithm::SHA1, 6, 1, 30, secret_bytes, None, String::new());
+    let totp = TOTP::new_unchecked(
+        algorithm,
+        digits,
+        1,
+        step,
+        secret_bytes,
+        None,
+        String::new(),
+    );
 
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -45,11 +98,11 @@ fn generate_totp_internal(secret_base32: &str) -> Result<(String, i64), String> 
 
     let code = totp.generate(now.as_secs());
 
-    // Calculate when this code expires (next 30-second boundary)
-    let current_step = now.as_secs() / 30;
-    let valid_until = ((current_step + 1) * 30) as i64 * 1000; // in milliseconds
+    // Calculate when this code expires
+    let current_step = now.as_secs() / step;
+    let valid_until = ((current_step + 1) * step) as i64 * 1000; // in milliseconds
 
-    Ok((code, valid_until))
+    Ok((code, valid_until, step))
 }
 
 /// Parse an otpauth:// URI and extract the secret, issuer, and account

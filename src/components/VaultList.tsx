@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Copy, Key, Clock, Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn, getInitial, stringToColorClass, formatDate, copyToClipboard } from "../lib/utils";
 import { getPasswordPlaintext } from "../lib/tauri-api";
 import { useState } from "react";
@@ -50,6 +51,7 @@ function VaultItem({
   isSelected: boolean;
   onSelect: () => void;
 }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const handleCopyPassword = async (e: React.MouseEvent) => {
@@ -97,12 +99,12 @@ function VaultItem({
       {/* Badges / Quick Actions */}
       <div className="flex items-center gap-2 shrink-0">
         {item.hasTotp && (
-          <span className="w-7 h-7 rounded-lg bg-black/20 flex items-center justify-center border border-white/5 shadow-inner" title="TOTP">
+          <span className="w-7 h-7 rounded-lg bg-black/20 flex items-center justify-center border border-white/5 shadow-inner" title={t("vaultList.totp")}>
             <Clock className="w-3.5 h-3.5 text-muted-dark group-hover:text-primary/70 transition-colors" strokeWidth={2} />
           </span>
         )}
         {item.hasPassword && (
-          <span className="w-7 h-7 rounded-lg bg-black/20 flex items-center justify-center border border-white/5 shadow-inner" title="Password">
+          <span className="w-7 h-7 rounded-lg bg-black/20 flex items-center justify-center border border-white/5 shadow-inner" title={t("vaultList.password")}>
             <Key className="w-3.5 h-3.5 text-muted-dark group-hover:text-primary/70 transition-colors" strokeWidth={2} />
           </span>
         )}
@@ -138,15 +140,16 @@ function VaultItem({
 }
 
 function EmptyState() {
+  const { t } = useTranslation();
+
   return (
     <div className="flex flex-col items-center justify-center h-full opacity-60 px-6 text-center">
       <div className="w-20 h-20 rounded-3xl glass-surface flex items-center justify-center mb-6 shadow-[0_4px_20px_rgba(0,0,0,0.2)]">
         <Key className="w-8 h-8 text-primary/40" strokeWidth={1.5} />
       </div>
-      <p className="text-[15px] font-medium text-primary">Your vault is empty</p>
+      <p className="text-[15px] font-medium text-primary">{t("vaultList.empty")}</p>
       <p className="text-[13px] text-muted-dark mt-2 leading-relaxed">
-        Tap the <span className="inline-block px-1.5 py-0.5 rounded bg-white/10 mx-1"><Plus className="w-3 h-3 inline pb-0.5"/></span> at the top 
-        to add a new password or 2FA code.
+        {t("vaultList.clickAdd")}
       </p>
     </div>
   );

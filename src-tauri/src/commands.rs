@@ -65,25 +65,6 @@ pub fn delete_item(state: State<'_, AppState>, id: String) -> Result<(), String>
 
 #[tauri::command]
 pub fn get_password_plaintext(state: State<'_, AppState>, id: String) -> PasswordResponse {
-    // Verify user identity first
-    match auth::verify_user() {
-        Ok(true) => {}
-        Ok(false) => {
-            return PasswordResponse {
-                success: false,
-                plaintext: None,
-                error: Some("Authentication denied".into()),
-            }
-        }
-        Err(e) => {
-            return PasswordResponse {
-                success: false,
-                plaintext: None,
-                error: Some(format!("Authentication error: {}", e)),
-            }
-        }
-    }
-
     let conn = match state.db.lock() {
         Ok(c) => c,
         Err(e) => {
@@ -130,6 +111,7 @@ pub fn get_totp_code(state: State<'_, AppState>, id: String) -> totp::TotpCodeRe
                 success: false,
                 code: None,
                 valid_until: None,
+                step: None,
                 error: Some(e.to_string()),
             }
         }
@@ -145,6 +127,7 @@ pub fn get_totp_code(state: State<'_, AppState>, id: String) -> totp::TotpCodeRe
                 success: false,
                 code: None,
                 valid_until: None,
+                step: None,
                 error: Some(e.to_string()),
             },
         },
@@ -152,24 +135,52 @@ pub fn get_totp_code(state: State<'_, AppState>, id: String) -> totp::TotpCodeRe
             success: false,
             code: None,
             valid_until: None,
+            step: None,
             error: Some("No TOTP secret stored for this item".into()),
         },
         Err(e) => totp::TotpCodeResponse {
             success: false,
             code: None,
             valid_until: None,
+            step: None,
             error: Some(e),
         },
     }
 }
 
 // ============================================================
-// System Auth
+// System Auth & Pattern Auth
 // ============================================================
 
 #[tauri::command]
 pub fn verify_system_auth() -> Result<bool, String> {
     auth::verify_user()
+}
+
+#[tauri::command]
+pub fn set_pattern_lock(pattern: String) -> Result<(), String> {
+    if pattern.is_empty() {
+        return Err("Pattern cannot be empty".into());
+    }
+    let hash = crypto::hash_pattern(&pattern).map_err(|e| e.to_string())?;
+    crypto::store_pattern(&hash).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn verify_pattern_lock(pattern: String) -> Result<bool, String> {
+    match crypto::retrieve_pattern() {
+        Ok(Some(hash)) => crypto::verify_pattern(&pattern, &hash).map_err(|e| e.to_string()),
+        Ok(None) => Err("No pattern set".into()),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
+pub fn has_pattern_lock() -> bool {
+    crypto::retrieve_pattern()
+        .map(|opt| opt.is_some())
+        .unwrap_or(false)
 }
 
 /// Parse an otpauth:// URI into its components
@@ -318,4 +329,43 @@ pub fn import_vault(
     }
 
     Ok(count)
+}
+
+// ============================================================
+// Window Controls (Tauri V2 JS Proxy Bypass)
+// ============================================================
+
+#[tauri::command]
+pub fn minimize_window(window: tauri::Window) {
+    if let Err(e) = window.minimize() {
+        eprintln!("Failed to minimize window: {}", e);
+    }
+}
+
+#[tauri::command]
+pub fn close_window(window: tauri::Window) {
+    if let Err(e) = window.close() {
+        eprintln!("Failed to close window: {}", e);
+    }
+}
+
+// ============================================================
+// Global Shortcuts
+// ============================================================
+
+#[tauri::command]
+pub fn toggle_window_visibility(app: tauri::AppHandle) {
+    use tauri::Manager;
+    if let Some(window) = app.get_webview_window("main") {
+        match window.is_visible() {
+            Ok(true) => {
+                let _ = window.hide();
+            }
+            Ok(false) => {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+            Err(_) => {}
+        }
+    }
 }

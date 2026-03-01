@@ -21,6 +21,7 @@ pub fn run() {
     };
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
@@ -33,10 +34,16 @@ pub fn run() {
             commands::get_password_plaintext,
             commands::get_totp_code,
             commands::verify_system_auth,
+            commands::set_pattern_lock,
+            commands::verify_pattern_lock,
+            commands::has_pattern_lock,
             commands::parse_otpauth_uri,
             commands::get_remaining_seconds,
             commands::export_vault,
             commands::import_vault,
+            commands::minimize_window,
+            commands::close_window,
+            commands::toggle_window_visibility,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

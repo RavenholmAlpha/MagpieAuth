@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "MagpieAuth - Lightweight Local Password & 2FA Manager"
 authors = ["you"]
 edition = "2021"
+default-run = "magpieauth"
 
 [lib]
 name = "magpieauth_lib"
@@ -29,3 +30,12 @@ base32 = "0.5"
 chrono = "0.4"
 dirs = "5"
 thiserror = "1"
+futures = "0.3"
+hex = "0.4.3"
+tauri-plugin-global-shortcut = "2.0.0"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.52", features = [
+    "Security_Credentials_UI",
+    "Foundation",
+] }

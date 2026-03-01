@@ -8,19 +8,49 @@
 ///   - Windows.Security.Credentials.UI.UserConsentVerifier
 ///   - RequestVerificationAsync("MagpieAuth requires your identity")
 
+#[cfg(windows)]
+use windows::core::HSTRING;
+#[cfg(windows)]
+use windows::Security::Credentials::UI::{
+    UserConsentVerificationResult, UserConsentVerifier, UserConsentVerifierAvailability,
+};
+
 /// Verify user identity via system authentication
 /// Returns true if authenticated, false otherwise
 pub fn verify_user() -> Result<bool, String> {
-    // DEV STUB: Always returns true
-    // In production, this would call:
-    //   Windows::Security::Credentials::UI::UserConsentVerifier::RequestVerificationAsync(...)
-    //   and check the result for UserConsentVerificationResult::Verified
-    Ok(true)
+    #[cfg(windows)]
+    {
+        let msg = HSTRING::from("MagpieAuth requires your identity to unlock the secure vault.");
+        let future = UserConsentVerifier::RequestVerificationAsync(&msg)
+            .map_err(|e| format!("Failed to request verification: {}", e))?;
+
+        let result = futures::executor::block_on(async { future.await })
+            .map_err(|e| format!("Verification await failed: {}", e))?;
+
+        Ok(result == UserConsentVerificationResult::Verified)
+    }
+
+    #[cfg(not(windows))]
+    {
+        // DEV STUB for non-windows
+        Ok(true)
+    }
 }
 
 /// Check if the system supports biometric/PIN authentication
 pub fn is_auth_available() -> bool {
-    // DEV STUB: Always returns true
-    // In production: UserConsentVerifier::CheckAvailabilityAsync()
-    true
+    #[cfg(windows)]
+    {
+        if let Ok(future) = UserConsentVerifier::CheckAvailabilityAsync() {
+            if let Ok(result) = futures::executor::block_on(async { future.await }) {
+                return result == UserConsentVerifierAvailability::Available;
+            }
+        }
+        false
+    }
+
+    #[cfg(not(windows))]
+    {
+        true
+    }
 }
