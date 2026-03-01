@@ -82,8 +82,9 @@ function VaultItem({
       <div
         className={cn(
           "w-11 h-11 rounded-[14px] flex items-center justify-center text-[18px] font-semibold shrink-0 shadow-inner",
-          stringToColorClass(item.title)
+          !item.labelColor && stringToColorClass(item.title)
         )}
+        style={item.labelColor ? { color: item.labelColor, backgroundColor: `${item.labelColor}1A` } : undefined}
       >
         {getInitial(item.title)}
       </div>

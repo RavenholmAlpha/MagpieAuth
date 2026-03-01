@@ -44,6 +44,10 @@ pub fn run() {
             commands::minimize_window,
             commands::close_window,
             commands::toggle_window_visibility,
+            commands::get_labels,
+            commands::add_label,
+            commands::update_label,
+            commands::delete_label,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

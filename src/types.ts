@@ -3,10 +3,25 @@
 // Mirrors the Rust data structures for Tauri IPC
 // ============================================================
 
+export interface Label {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: number;
+}
+
+export interface LabelPayload {
+  name: string;
+  color: string;
+}
+
 export interface VaultItemBase {
   id: string;
   title: string;
   account: string | null;
+  labelId: string | null;
+  labelName: string | null;
+  labelColor: string | null;
   hasPassword: boolean;
   hasTotp: boolean;
   createdAt: number;
@@ -40,4 +55,5 @@ export interface ItemPayload {
   account: string | null;
   password: string | null;
   totpSecret: string | null;
+  labelId: string | null;
 }

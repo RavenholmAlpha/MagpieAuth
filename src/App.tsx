@@ -10,9 +10,10 @@ import { AddEditDialog } from "./components/AddEditDialog";
 import { ExportImportDialog } from "./components/ExportImportDialog";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { useIdleLock } from "./hooks/useIdleLock";
-import { getVaultItems, searchItems, toggleWindowVisibility } from "./lib/tauri-api";
-import type { VaultItemBase } from "./types";
+import { getVaultItems, searchItems, getLabels, toggleWindowVisibility } from "./lib/tauri-api";
+import type { VaultItemBase, Label } from "./types";
 import { PatternSetupDialog } from "./components/PatternSetupDialog";
+import { LabelManager } from "./components/LabelManager";
 import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
 
 export type LockMode = "strict" | "normal" | "relaxed";
@@ -38,9 +39,12 @@ function App() {
   const [editingItem, setEditingItem] = useState<VaultItemBase | null>(null);
   const [showExportImport, setShowExportImport] = useState(false);
   const [showPatternSetup, setShowPatternSetup] = useState(false);
+  const [showLabelManager, setShowLabelManager] = useState(false);
   const [exportImportMode, setExportImportMode] = useState<"export" | "import">("export");
   const [showSettings, setShowSettings] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  
+  const [labels, setLabels] = useState<Label[]>([]);
 
   const [authMethod, setAuthMethod] = useState<AuthMethod>(() => {
     return (localStorage.getItem("magpie_auth_method") as AuthMethod) || "system";
@@ -87,8 +91,10 @@ function App() {
     try {
       const data = await getVaultItems();
       setItems(data);
+      const labelData = await getLabels();
+      setLabels(labelData);
     } catch (e) {
-      console.error("Failed to load items:", e);
+      console.error("Failed to load items/labels:", e);
     }
   }, []);
 
@@ -246,6 +252,7 @@ function App() {
         onOpenPatternSetup={() => { setShowSettings(false); setShowPatternSetup(true); }}
         globalShortcut={globalShortcut}
         onGlobalShortcutChange={setGlobalShortcut}
+        onManageLabels={() => { setShowSettings(false); setShowLabelManager(true); }}
       />
 
       {/* Detail Drawer */}
@@ -260,8 +267,17 @@ function App() {
       <AddEditDialog
         isOpen={showAddEdit}
         editingItem={editingItem}
+        labels={labels}
         onClose={() => { setShowAddEdit(false); setEditingItem(null); }}
         onSaved={handleSaved}
+        onManageLabels={() => setShowLabelManager(true)}
+      />
+
+      {/* Label Manager Dialog */}
+      <LabelManager
+        isOpen={showLabelManager}
+        onClose={() => setShowLabelManager(false)}
+        onLabelsChange={setLabels}
       />
 
       {/* Export/Import Dialog */}

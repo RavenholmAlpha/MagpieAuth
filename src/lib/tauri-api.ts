@@ -5,6 +5,8 @@ import type {
   TotpCodeResponse,
   OtpauthParseResult,
   ItemPayload,
+  Label,
+  LabelPayload,
 } from "../types";
 
 // ============================================================
@@ -32,6 +34,26 @@ export async function updateItem(
 
 export async function deleteItem(id: string): Promise<void> {
   return invoke<void>("delete_item", { id });
+}
+
+// ============================================================
+// Label CRUD
+// ============================================================
+
+export async function getLabels(): Promise<Label[]> {
+  return invoke<Label[]>("get_labels");
+}
+
+export async function addLabel(payload: LabelPayload): Promise<string> {
+  return invoke<string>("add_label", { payload });
+}
+
+export async function updateLabel(id: string, payload: LabelPayload): Promise<void> {
+  return invoke<void>("update_label", { id, payload });
+}
+
+export async function deleteLabel(id: string): Promise<void> {
+  return invoke<void>("delete_label", { id });
 }
 
 // ============================================================

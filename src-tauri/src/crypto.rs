@@ -35,38 +35,68 @@ pub fn generate_imk() -> Zeroizing<[u8; 32]> {
 /// Store IMK in Windows Credential Manager
 /// For dev/initial build, uses a local file fallback in AppData
 pub fn store_imk(key: &[u8; 32]) -> Result<(), CryptoError> {
-    let app_data =
-        dirs::data_dir().ok_or_else(|| CryptoError::CredentialError("No app data dir".into()))?;
-    let key_path = app_data.join("MagpieAuth").join(".imk");
-    std::fs::create_dir_all(key_path.parent().unwrap())
+    let entry = keyring::Entry::new("MagpieAuth", "imk")
         .map_err(|e| CryptoError::CredentialError(e.to_string()))?;
-    std::fs::write(&key_path, key.as_ref())
+    let hex_key = hex::encode(key);
+    entry
+        .set_password(&hex_key)
         .map_err(|e| CryptoError::CredentialError(e.to_string()))?;
     Ok(())
 }
 
 /// Retrieve IMK from storage (wrapped in Zeroizing for auto-cleanup)
 pub fn retrieve_imk() -> Result<[u8; 32], CryptoError> {
-    let app_data =
-        dirs::data_dir().ok_or_else(|| CryptoError::CredentialError("No app data dir".into()))?;
-    let key_path = app_data.join("MagpieAuth").join(".imk");
+    let entry = keyring::Entry::new("MagpieAuth", "imk")
+        .map_err(|e| CryptoError::CredentialError(e.to_string()))?;
 
-    if !key_path.exists() {
-        // First run: generate and store a new IMK
-        let imk = generate_imk();
-        store_imk(&imk)?;
-        return Ok(*imk);
+    // Try to get from keyring
+    match entry.get_password() {
+        Ok(hex_key) => {
+            let data =
+                hex::decode(&hex_key).map_err(|e| CryptoError::CredentialError(e.to_string()))?;
+
+            if data.len() != 32 {
+                return Err(CryptoError::CredentialError("Invalid IMK length".into()));
+            }
+
+            let mut key = [0u8; 32];
+            key.copy_from_slice(&data);
+            Ok(key)
+        }
+        Err(_) => {
+            // Check for legacy file migration
+            let app_data = dirs::data_dir()
+                .ok_or_else(|| CryptoError::CredentialError("No app data dir".into()))?;
+            let key_path = app_data.join("MagpieAuth").join(".imk");
+
+            if key_path.exists() {
+                let data = std::fs::read(&key_path)
+                    .map_err(|e| CryptoError::CredentialError(e.to_string()))?;
+
+                if data.len() != 32 {
+                    return Err(CryptoError::CredentialError(
+                        "Invalid legacy IMK length".into(),
+                    ));
+                }
+
+                let mut key = [0u8; 32];
+                key.copy_from_slice(&data);
+
+                // Migrate to keyring
+                let hex_key = hex::encode(key);
+                let _ = entry.set_password(&hex_key);
+                // Delete legacy file
+                let _ = std::fs::remove_file(key_path);
+
+                return Ok(key);
+            }
+
+            // First run: generate and store a new IMK
+            let imk = generate_imk();
+            store_imk(&imk)?;
+            return Ok(*imk);
+        }
     }
-
-    let data = std::fs::read(&key_path).map_err(|e| CryptoError::CredentialError(e.to_string()))?;
-
-    if data.len() != 32 {
-        return Err(CryptoError::CredentialError("Invalid IMK length".into()));
-    }
-
-    let mut key = [0u8; 32];
-    key.copy_from_slice(&data);
-    Ok(key)
 }
 
 // ============================================================
@@ -151,7 +181,7 @@ pub fn retrieve_pattern() -> Result<Option<String>, CryptoError> {
 
 /// Encrypt a plaintext field using AES-256-GCM
 /// Returns: [Nonce 12B][Tag 16B][Ciphertext]
-pub fn encrypt_field(plaintext: &[u8], imk: &[u8; 32]) -> Result<Vec<u8>, CryptoError> {
+pub fn encrypt_field(plaintext: &[u8], imk: &[u8; 32], aad: &[u8]) -> Result<Vec<u8>, CryptoError> {
     let cipher =
         Aes256Gcm::new_from_slice(imk).map_err(|e| CryptoError::EncryptionFailed(e.to_string()))?;
 
@@ -159,8 +189,13 @@ pub fn encrypt_field(plaintext: &[u8], imk: &[u8; 32]) -> Result<Vec<u8>, Crypto
     OsRng.fill_bytes(&mut nonce_bytes);
     let nonce = Nonce::from_slice(&nonce_bytes);
 
+    let payload = aes_gcm::aead::Payload {
+        msg: plaintext,
+        aad,
+    };
+
     let ciphertext = cipher
-        .encrypt(nonce, plaintext)
+        .encrypt(nonce, payload)
         .map_err(|e| CryptoError::EncryptionFailed(e.to_string()))?;
 
     // AES-GCM appends the tag to ciphertext by default in aes-gcm crate
@@ -174,7 +209,7 @@ pub fn encrypt_field(plaintext: &[u8], imk: &[u8; 32]) -> Result<Vec<u8>, Crypto
 
 /// Decrypt a field encrypted with encrypt_field
 /// Input format: [Nonce 12B][Ciphertext+Tag]
-pub fn decrypt_field(blob: &[u8], imk: &[u8; 32]) -> Result<Vec<u8>, CryptoError> {
+pub fn decrypt_field(blob: &[u8], imk: &[u8; 32], aad: &[u8]) -> Result<Vec<u8>, CryptoError> {
     if blob.len() < 12 {
         return Err(CryptoError::DecryptionFailed("Data too short".into()));
     }
@@ -185,11 +220,25 @@ pub fn decrypt_field(blob: &[u8], imk: &[u8; 32]) -> Result<Vec<u8>, CryptoError
     let nonce = Nonce::from_slice(&blob[..12]);
     let ciphertext = &blob[12..];
 
-    let plaintext = cipher
-        .decrypt(nonce, ciphertext)
-        .map_err(|e| CryptoError::DecryptionFailed(e.to_string()))?;
+    // Try with AAD first
+    let payload_with_aad = aes_gcm::aead::Payload {
+        msg: ciphertext,
+        aad,
+    };
 
-    Ok(plaintext)
+    if let Ok(plaintext) = cipher.decrypt(nonce, payload_with_aad) {
+        return Ok(plaintext);
+    }
+
+    // Fallback: Try without AAD (for backward compatibility)
+    let payload_without_aad = aes_gcm::aead::Payload {
+        msg: ciphertext,
+        aad: b"",
+    };
+
+    cipher
+        .decrypt(nonce, payload_without_aad)
+        .map_err(|e| CryptoError::DecryptionFailed(e.to_string()))
 }
 
 // ============================================================
@@ -273,8 +322,9 @@ mod tests {
     fn test_encrypt_decrypt_roundtrip() {
         let imk = generate_imk();
         let plaintext = b"Hello, MagpieAuth!";
-        let encrypted = encrypt_field(plaintext, &imk).expect("encryption failed");
-        let decrypted = decrypt_field(&encrypted, &imk).expect("decryption failed");
+        let aad = b"test_id";
+        let encrypted = encrypt_field(plaintext, &imk, aad).expect("encryption failed");
+        let decrypted = decrypt_field(&encrypted, &imk, aad).expect("decryption failed");
         assert_eq!(plaintext.to_vec(), decrypted);
     }
 
@@ -282,28 +332,30 @@ mod tests {
     fn test_encrypt_different_nonces() {
         let imk = generate_imk();
         let plaintext = b"same text";
-        let enc1 = encrypt_field(plaintext, &imk).unwrap();
-        let enc2 = encrypt_field(plaintext, &imk).unwrap();
+        let aad = b"id_123";
+        let enc1 = encrypt_field(plaintext, &imk, aad).unwrap();
+        let enc2 = encrypt_field(plaintext, &imk, aad).unwrap();
         // Different nonces → different ciphertext
         assert_ne!(enc1, enc2);
         // But both decrypt to the same plaintext
-        assert_eq!(decrypt_field(&enc1, &imk).unwrap(), plaintext.to_vec());
-        assert_eq!(decrypt_field(&enc2, &imk).unwrap(), plaintext.to_vec());
+        assert_eq!(decrypt_field(&enc1, &imk, aad).unwrap(), plaintext.to_vec());
+        assert_eq!(decrypt_field(&enc2, &imk, aad).unwrap(), plaintext.to_vec());
     }
 
     #[test]
     fn test_wrong_key_fails() {
         let imk1 = generate_imk();
         let imk2 = generate_imk();
-        let encrypted = encrypt_field(b"secret", &imk1).unwrap();
-        let result = decrypt_field(&encrypted, &imk2);
+        let aad = b"id";
+        let encrypted = encrypt_field(b"secret", &imk1, aad).unwrap();
+        let result = decrypt_field(&encrypted, &imk2, aad);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_short_blob_fails() {
         let imk = generate_imk();
-        let result = decrypt_field(&[0u8; 5], &imk);
+        let result = decrypt_field(&[0u8; 5], &imk, b"id");
         assert!(result.is_err());
     }
 
@@ -327,8 +379,8 @@ mod tests {
     #[test]
     fn test_empty_plaintext() {
         let imk = generate_imk();
-        let encrypted = encrypt_field(b"", &imk).expect("encryption failed");
-        let decrypted = decrypt_field(&encrypted, &imk).expect("decryption failed");
+        let encrypted = encrypt_field(b"", &imk, b"id").expect("encryption failed");
+        let decrypted = decrypt_field(&encrypted, &imk, b"id").expect("decryption failed");
         assert_eq!(decrypted, b"".to_vec());
     }
 }

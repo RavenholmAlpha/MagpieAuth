@@ -60,6 +60,38 @@ pub fn delete_item(state: State<'_, AppState>, id: String) -> Result<(), String>
 }
 
 // ============================================================
+// Label CRUD Commands
+// ============================================================
+
+#[tauri::command]
+pub fn get_labels(state: State<'_, AppState>) -> Result<Vec<db::Label>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    db::get_all_labels(&conn).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn add_label(state: State<'_, AppState>, payload: db::LabelPayload) -> Result<String, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    db::insert_label(&conn, &payload)
+}
+
+#[tauri::command]
+pub fn update_label(
+    state: State<'_, AppState>,
+    id: String,
+    payload: db::LabelPayload,
+) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    db::update_label(&conn, &id, &payload)
+}
+
+#[tauri::command]
+pub fn delete_label(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    db::delete_label(&conn, &id)
+}
+
+// ============================================================
 // Sensitive Data Access (requires system auth)
 // ============================================================
 
@@ -77,7 +109,7 @@ pub fn get_password_plaintext(state: State<'_, AppState>, id: String) -> Passwor
     };
 
     match db::get_encrypted_password(&conn, &id) {
-        Ok(Some(blob)) => match crypto::decrypt_field(&blob, &state.imk) {
+        Ok(Some(blob)) => match crypto::decrypt_field(&blob, &state.imk, id.as_bytes()) {
             Ok(plaintext) => PasswordResponse {
                 success: true,
                 plaintext: Some(String::from_utf8_lossy(&plaintext).to_string()),
@@ -118,7 +150,7 @@ pub fn get_totp_code(state: State<'_, AppState>, id: String) -> totp::TotpCodeRe
     };
 
     match db::get_encrypted_totp_secret(&conn, &id) {
-        Ok(Some(blob)) => match crypto::decrypt_field(&blob, &state.imk) {
+        Ok(Some(blob)) => match crypto::decrypt_field(&blob, &state.imk, id.as_bytes()) {
             Ok(secret_bytes) => {
                 let secret_str = String::from_utf8_lossy(&secret_bytes).to_string();
                 totp::generate_totp_code(&secret_str)
@@ -231,6 +263,7 @@ struct ExportItem {
     account: Option<String>,
     password_plaintext: Option<String>,
     totp_secret_plaintext: Option<String>,
+    label_id: Option<String>,
     created_at: i64,
     updated_at: i64,
 }
@@ -241,6 +274,7 @@ struct ExportData {
     version: u32,
     exported_at: i64,
     items: Vec<ExportItem>,
+    labels: Vec<db::Label>,
 }
 
 #[tauri::command]
@@ -265,13 +299,13 @@ pub fn export_vault(
         .iter()
         .map(|item| {
             let password_plaintext = item.encrypted_password.as_ref().and_then(|blob| {
-                crypto::decrypt_field(blob, &state.imk)
+                crypto::decrypt_field(blob, &state.imk, item.id.as_bytes())
                     .ok()
                     .map(|b| String::from_utf8_lossy(&b).to_string())
             });
 
             let totp_secret_plaintext = item.encrypted_totp_secret.as_ref().and_then(|blob| {
-                crypto::decrypt_field(blob, &state.imk)
+                crypto::decrypt_field(blob, &state.imk, item.id.as_bytes())
                     .ok()
                     .map(|b| String::from_utf8_lossy(&b).to_string())
             });
@@ -282,16 +316,20 @@ pub fn export_vault(
                 account: item.account.clone(),
                 password_plaintext,
                 totp_secret_plaintext,
+                label_id: item.label_id.clone(),
                 created_at: item.created_at,
                 updated_at: item.updated_at,
             }
         })
         .collect();
 
+    let labels = db::get_all_labels(&conn).unwrap_or_default();
+
     let export_data = ExportData {
-        version: 1,
+        version: 2,
         exported_at: chrono::Utc::now().timestamp_millis(),
         items: export_items,
+        labels,
     };
 
     let json = serde_json::to_vec(&export_data).map_err(|e| e.to_string())?;
@@ -315,6 +353,26 @@ pub fn import_vault(
         serde_json::from_slice(&decrypted).map_err(|e| format!("Invalid backup format: {}", e))?;
 
     let conn = state.db.lock().map_err(|e| e.to_string())?;
+
+    // Import labels (if present in version 2 format)
+    if export_data.version >= 2 {
+        for label in export_data.labels {
+            // Check if label already exists
+            let stmt = conn.query_row(
+                "SELECT id FROM labels WHERE id = ?1",
+                rusqlite::params![label.id],
+                |_| Ok(()),
+            );
+            if stmt.is_err() {
+                // Not found, insert straight into raw DB to preserve the UUID instead of generating new ones
+                let _ = conn.execute(
+                    "INSERT INTO labels (id, name, color, created_at) VALUES (?1, ?2, ?3, ?4)",
+                    rusqlite::params![label.id, label.name, label.color, label.created_at],
+                );
+            }
+        }
+    }
+
     let mut count = 0u32;
 
     for item in &export_data.items {
@@ -323,6 +381,7 @@ pub fn import_vault(
             account: item.account.clone(),
             password: item.password_plaintext.clone(),
             totp_secret: item.totp_secret_plaintext.clone(),
+            label_id: item.label_id.clone(),
         };
         db::insert_item(&conn, &payload, &state.imk)?;
         count += 1;

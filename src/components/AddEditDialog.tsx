@@ -6,21 +6,24 @@ import { addItem, updateItem, parseOtpauthUri } from "../lib/tauri-api";
 import { generatePassword } from "../lib/utils";
 import { evaluatePasswordStrength } from "../lib/passwordStrength";
 import { QrScannerDialog } from "./QrScannerDialog";
-import type { VaultItemBase, ItemPayload } from "../types";
+import type { VaultItemBase, ItemPayload, Label } from "../types";
 
 interface AddEditDialogProps {
   isOpen: boolean;
   editingItem: VaultItemBase | null; // null = add mode
+  labels: Label[];
   onClose: () => void;
   onSaved: () => void;
+  onManageLabels: () => void;
 }
 
-export function AddEditDialog({ isOpen, editingItem, onClose, onSaved }: AddEditDialogProps) {
+export function AddEditDialog({ isOpen, editingItem, labels, onClose, onSaved, onManageLabels }: AddEditDialogProps) {
   const { t } = useTranslation();
   const isEditing = editingItem !== null;
 
   const [title, setTitle] = useState("");
   const [account, setAccount] = useState("");
+  const [labelId, setLabelId] = useState<string>("");
   const [password, setPassword] = useState("");
   const [totpSecret, setTotpSecret] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -34,9 +37,11 @@ export function AddEditDialog({ isOpen, editingItem, onClose, onSaved }: AddEdit
       if (editingItem) {
         setTitle(editingItem.title);
         setAccount(editingItem.account || "");
+        setLabelId(editingItem.labelId || "");
       } else {
         setTitle("");
         setAccount("");
+        setLabelId("");
       }
       setPassword("");
       setTotpSecret("");
@@ -117,6 +122,7 @@ export function AddEditDialog({ isOpen, editingItem, onClose, onSaved }: AddEdit
       account: account.trim() || null,
       password: password || null,
       totpSecret: totpSecret.trim() || null,
+      labelId: labelId || null,
     };
 
     try {
@@ -214,6 +220,43 @@ export function AddEditDialog({ isOpen, editingItem, onClose, onSaved }: AddEdit
                              focus:border-white/20 focus:bg-white/[0.05]
                              transition-all duration-300 outline-none"
                 />
+              </FieldGroup>
+              
+              {/* Label Selector */}
+              <FieldGroup label={t("addEdit.labelLabel", "Label")}>
+                <div className="flex gap-2">
+                  <select
+                    value={labelId}
+                    onChange={(e) => setLabelId(e.target.value)}
+                    className="w-full px-4 py-3.5 text-[15px] appearance-none
+                               glass-surface rounded-xl border-white/5 shadow-inner
+                               text-primary bg-transparent
+                               focus:border-white/20 focus:bg-white/[0.05]
+                               transition-all duration-300 outline-none cursor-pointer"
+                  >
+                    <option value="" className="bg-background text-muted-dark">
+                      {t("addEdit.noLabel", "No Label")}
+                    </option>
+                    {labels.map((lbl) => (
+                      <option key={lbl.id} value={lbl.id} className="bg-background text-primary">
+                        {lbl.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={onManageLabels}
+                    className="w-[52px] h-[52px] rounded-xl flex items-center justify-center
+                               glass-surface border-white/10 shadow-[0_2px_10px_rgba(0,0,0,0.2)]
+                               hover:bg-white/[0.08] active:scale-95 transition-all duration-200 cursor-pointer shrink-0"
+                    title={t("labels.manageTitle", "Manage Labels")}
+                  >
+                    <div className="w-5 h-5 opacity-70">
+                      {/* Simple tag icon */}
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.707 8.707a2 2 0 0 0 2.828 0l7.293-7.293a2 2 0 0 0 0-2.828z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg>
+                    </div>
+                  </button>
+                </div>
               </FieldGroup>
 
               {/* Password */}

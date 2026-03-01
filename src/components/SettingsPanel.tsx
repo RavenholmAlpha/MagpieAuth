@@ -18,6 +18,7 @@ interface SettingsPanelProps {
   onOpenPatternSetup: () => void;
   globalShortcut: string;
   onGlobalShortcutChange: (shortcut: string) => void;
+  onManageLabels?: () => void;
 }
 
 export function SettingsPanel({ 
