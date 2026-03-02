@@ -1,0 +1,85 @@
+    Checking magpieauth v0.1.0 (H:\antipro\magpieauth\src-tauri)
+warning: unused import: `windows::core::Interface`
+  --> src\auth.rs:26:13
+   |
+26 |         use windows::core::Interface;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error: future cannot be sent between threads safely
+   --> src\commands.rs:187:1
+    |
+187 |   #[tauri::command]
+    |   ^^^^^^^^^^^^^^^^^ future returned by `verify_system_auth` is not `Send`
+    |
+   ::: src\lib.rs:74:25
+    |
+ 74 |           .invoke_handler(tauri::generate_handler![
+    |  _________________________-
+ 75 | |             commands::get_vault_items,
+ 76 | |             commands::search_items,
+ 77 | |             commands::add_item,
+...   |
+101 | |             commands::sync_lock_state,
+102 | |         ])
+    | |_________- in this macro invocation
+    |
+    = help: within `impl std::future::Future<Output = Result<bool, std::string::String>>`, the trait `Send` is not implemented for `NonNull<c_void>`
+note: future is not `Send` as this value is used across an await
+   --> src\auth.rs:44:26
+    |
+ 35 |         if let Ok(factory) =
+    |                   ------- has type `IUserConsentVerifierInterop` which is not `Send`
+...
+ 44 |                         .await
+    |                          ^^^^^ await occurs here, with `factory` maybe used later
+note: required by a bound in `ResultFutureTag::future`
+   --> C:\Users\admin\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\tauri-2.10.2\src\ipc\command.rs:314:42
+    |
+310 |     pub async fn future<T, E, F>(self, value: F) -> Result<InvokeResponseBody, InvokeError>
+    |                  ------ required by a bound in this associated function
+...
+314 |       F: Future<Output = Result<T, E>> + Send,
+    |                                          ^^^^ required by this bound in `ResultFutureTag::future`
+    = note: this error originates in the macro `commands::__cmd__verify_system_auth` which comes from the expansion of the macro `tauri::generate_handler` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: future cannot be sent between threads safely
+   --> src\commands.rs:285:1
+    |
+285 |   #[tauri::command]
+    |   ^^^^^^^^^^^^^^^^^ future returned by `export_vault` is not `Send`
+    |
+   ::: src\lib.rs:74:25
+    |
+ 74 |           .invoke_handler(tauri::generate_handler![
+    |  _________________________-
+ 75 | |             commands::get_vault_items,
+ 76 | |             commands::search_items,
+ 77 | |             commands::add_item,
+...   |
+101 | |             commands::sync_lock_state,
+102 | |         ])
+    | |_________- in this macro invocation
+    |
+    = help: within `impl std::future::Future<Output = Result<(), std::string::String>>`, the trait `Send` is not implemented for `NonNull<c_void>`
+note: future is not `Send` as this value is used across an await
+   --> src\auth.rs:44:26
+    |
+ 35 |         if let Ok(factory) =
+    |                   ------- has type `IUserConsentVerifierInterop` which is not `Send`
+...
+ 44 |                         .await
+    |                          ^^^^^ await occurs here, with `factory` maybe used later
+note: required by a bound in `ResultFutureTag::future`
+   --> C:\Users\admin\.cargo\registry\src\rsproxy.cn-e3de039b2554c837\tauri-2.10.2\src\ipc\command.rs:314:42
+    |
+310 |     pub async fn future<T, E, F>(self, value: F) -> Result<InvokeResponseBody, InvokeError>
+    |                  ------ required by a bound in this associated function
+...
+314 |       F: Future<Output = Result<T, E>> + Send,
+    |                                          ^^^^ required by this bound in `ResultFutureTag::future`
+    = note: this error originates in the macro `commands::__cmd__export_vault` which comes from the expansion of the macro `tauri::generate_handler` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: `magpieauth` (lib) generated 1 warning
+error: could not compile `magpieauth` (lib) due to 4 previous errors; 1 warning emitted

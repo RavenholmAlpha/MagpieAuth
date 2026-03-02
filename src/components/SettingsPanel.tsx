@@ -21,6 +21,8 @@ interface SettingsPanelProps {
   onOpenPatternSetup: () => void;
   globalShortcut: string;
   onGlobalShortcutChange: (shortcut: string) => void;
+  closeBehavior: "close" | "tray" | "ask";
+  onCloseBehaviorChange: (behavior: "close" | "tray" | "ask") => void;
   onManageLabels?: () => void;
 }
 
@@ -37,7 +39,9 @@ export function SettingsPanel({
   onAuthMethodChange,
   onOpenPatternSetup,
   globalShortcut,
-  onGlobalShortcutChange
+  onGlobalShortcutChange,
+  closeBehavior,
+  onCloseBehaviorChange
 }: SettingsPanelProps) {
   const { t, i18n } = useTranslation();
   const { theme, setTheme } = useTheme();
@@ -309,19 +313,69 @@ export function SettingsPanel({
                 <h3 className="text-[11px] font-semibold text-primary/70 uppercase tracking-[0.1em] ml-1 mb-3">
                   {t("settings.advanced")}
                 </h3>
-                <div className="rounded-2xl glass-surface border-white/5 shadow-inner p-5">
+                <div className="rounded-2xl glass-surface border-white/5 shadow-inner p-5 space-y-6">
+                  {/* Close Behavior */}
                   <div className="flex flex-col gap-2">
-                    <span className="text-xs text-primary/80">{t("settings.globalShortcut")}</span>
+                    <span className="text-xs text-primary/80">{t("settings.closeBehavior", "Close Button Behavior")}</span>
+                    <div className="grid grid-cols-3 gap-2 bg-surface-sunken p-1 rounded-xl border border-border-subtle">
+                      {(["close", "tray", "ask"] as const).map((behavior) => (
+                        <button
+                          key={behavior}
+                          onClick={() => onCloseBehaviorChange(behavior)}
+                          className={`py-1.5 px-2 rounded-lg text-xs font-medium transition-all duration-200 capitalize
+                            ${closeBehavior === behavior 
+                              ? "bg-white/10 text-primary shadow-sm" 
+                              : "text-muted-dark hover:text-muted hover:bg-white/5"}`}
+                        >
+                          {t(`settings.closeBehavior_${behavior}`, behavior === "tray" ? "Minimize to Tray" : behavior)}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-muted-dark mt-1 leading-relaxed">
+                      {t("settings.closeBehaviorDesc", "Choose what happens when you click the window close (X) button.")}
+                    </p>
+                  </div>
+
+                  {/* Global Shortcut */}
+                  <div className="flex flex-col gap-2 pt-4 border-t border-white/5">
+                    <span className="text-xs text-primary/80">{t("settings.globalShortcut", "Global Shortcut")}</span>
                     <input
                       type="text"
-                      className="w-full bg-surface-sunken border border-border-subtle rounded-lg px-3 py-2 text-xs text-primary/90 font-mono tracking-wide placeholder:text-muted-dark focus:outline-none focus:border-border transition-colors"
+                      className="w-full bg-surface-sunken border border-border-subtle rounded-lg px-3 py-2 text-xs text-primary/90 font-mono tracking-wide placeholder:text-muted-dark focus:outline-none focus:border-primary transition-colors cursor-pointer select-text"
                       value={globalShortcut}
-                      onChange={(e) => onGlobalShortcutChange(e.target.value)}
-                      placeholder="e.g. CommandOrControl+Shift+L"
-                      title={t("settings.globalShortcutDesc")}
+                      readOnly
+                      onKeyDown={(e) => {
+                        e.preventDefault();
+                        if (e.key === "Escape") {
+                          e.currentTarget.blur();
+                          return;
+                        }
+                        if (e.key === "Backspace" || e.key === "Delete") {
+                          onGlobalShortcutChange("");
+                          return;
+                        }
+                        const modifiers = [];
+                        if (e.ctrlKey || e.metaKey) modifiers.push("CommandOrControl");
+                        if (e.shiftKey) modifiers.push("Shift");
+                        if (e.altKey) modifiers.push("Alt");
+                        if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) return;
+                        
+                        let key = e.key.toUpperCase();
+                        if (key === " ") key = "Space";
+                        
+                        // Mapping some common symbols
+                        if (key === "+" || key === "=") key = "Plus";
+                        if (key === "-") key = "Minus";
+                        
+                        const shortcut = [...modifiers, key].join("+");
+                        onGlobalShortcutChange(shortcut);
+                        e.currentTarget.blur();
+                      }}
+                      placeholder={t("settings.shortcutPlaceholder", "Click and press keys to set shortcut (Backspace to clear)")}
+                      title={t("settings.globalShortcutDesc", "Set a global shortcut to quickly show or hide the application window.")}
                     />
                     <p className="text-[10px] text-muted-dark mt-1 leading-relaxed">
-                      {t("settings.globalShortcutDesc")}
+                      {t("settings.globalShortcutDesc", "Set a global shortcut to quickly show or hide the application window.")}
                     </p>
                   </div>
                 </div>

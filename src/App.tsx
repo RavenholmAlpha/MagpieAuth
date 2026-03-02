@@ -10,12 +10,12 @@ import { AddEditDialog } from "./components/AddEditDialog";
 import { ExportImportDialog } from "./components/ExportImportDialog";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { useIdleLock } from "./hooks/useIdleLock";
-import { getVaultItems, searchItems, getLabels, toggleWindowVisibility } from "./lib/tauri-api";
+import { getVaultItems, searchItems, getLabels, toggleWindowVisibility, hideWindow, exitApp, registerGlobalShortcut, syncLockState } from "./lib/tauri-api";
 import type { VaultItemBase, Label } from "./types";
 import { PatternSetupDialog } from "./components/PatternSetupDialog";
 import { LabelManager } from "./components/LabelManager";
 import { SetupWizard } from "./components/SetupWizard";
-import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
+import { CloseConfirmDialog } from "./components/CloseConfirmDialog";
 
 export type LockMode = "strict" | "normal" | "relaxed";
 export type AuthMethod = "system" | "pattern";
@@ -48,6 +48,7 @@ function App() {
   const [exportImportMode, setExportImportMode] = useState<"export" | "import">("export");
   const [showSettings, setShowSettings] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   
   const [labels, setLabels] = useState<Label[]>([]);
 
@@ -59,37 +60,75 @@ function App() {
     return localStorage.getItem("magpie_global_shortcut") || "CommandOrControl+Shift+L";
   });
 
+  const [closeBehavior, setCloseBehavior] = useState<"close" | "tray" | "ask">(() => {
+    return (localStorage.getItem("magpie_close_behavior") as "close" | "tray" | "ask") || "tray";
+  });
+
   // ======== Global Shortcut Registration ========
   useEffect(() => {
-    let registered = false;
+    let active = true;
 
     const setupShortcut = async () => {
+      if (!active) return;
+      
       try {
-        await unregister(globalShortcut); // Ensure it's clean before registering
+        await registerGlobalShortcut(globalShortcut);
       } catch (e) {
-        // Ignore unregister errors if it wasn't registered
-      }
-
-      try {
-        await register(globalShortcut, async (event) => {
-          if (event.state === "Pressed") {
-            await toggleWindowVisibility();
-          }
-        });
-        registered = true;
-      } catch (e) {
-        console.warn("Global shortcut registration skipped (likely not running in Tauri window):", e);
+        console.warn("Global shortcut registration failed", e);
       }
     };
 
     setupShortcut();
 
     return () => {
-      if (registered) {
-        unregister(globalShortcut).catch(console.error);
-      }
+      active = false;
+      // We don't need to unregister on unmount because the backend will 
+      // handle unregistering automatically when we call register_global_shortcut next time.
     };
   }, [globalShortcut]);
+
+  // ======== Window Close Behavior ========
+  useEffect(() => {
+    let active = true;
+    let unlistenFn: (() => void) | undefined;
+
+    const setupCloseHandler = async () => {
+      const { getCurrentWindow } = await import("@tauri-apps/api/window");
+      
+      const appWindow = getCurrentWindow();
+      const unlisten = await appWindow.onCloseRequested(async (event) => {
+        if (closeBehavior === "tray") {
+           event.preventDefault();
+           await hideWindow();
+        } else if (closeBehavior === "ask") {
+           event.preventDefault();
+           setShowCloseConfirm(true);
+        } else {
+           // closeBehavior === "close"
+           event.preventDefault();
+           await exitApp();
+        }
+      });
+      
+      if (!active) {
+          unlisten();
+      } else {
+          unlistenFn = unlisten;
+      }
+    };
+
+    setupCloseHandler().catch(console.error);
+
+    return () => {
+      active = false;
+      if (unlistenFn) unlistenFn();
+    };
+  }, [closeBehavior]);
+
+  // ======== System Tray Menu Sync & Events ========
+  useEffect(() => {
+    syncLockState(isLocked).catch(() => {});
+  }, [isLocked]);
 
   // ======== Data Loading ========
   const loadItems = useCallback(async () => {
@@ -145,6 +184,22 @@ function App() {
     setShowExportImport(false);
   }, [isLocked, isInitialized]);
 
+  // Listen for 'tray-lock-request' from rust system tray menu
+  useEffect(() => {
+    let unlistenFn: (() => void) | undefined;
+    const setupTrayListener = async () => {
+      const { listen } = await import("@tauri-apps/api/event");
+      const unlisten = await listen("tray-lock-request", () => {
+        handleLock();
+      });
+      unlistenFn = unlisten;
+    };
+    setupTrayListener();
+    return () => {
+      if (unlistenFn) unlistenFn();
+    };
+  }, [handleLock]);
+
   useIdleLock(handleLock, lockMode, lockTimeoutMs);
 
   // Sync settings to localStorage
@@ -153,7 +208,8 @@ function App() {
     localStorage.setItem("magpie_lock_timeout", lockTimeoutMs.toString());
     localStorage.setItem("magpie_auth_method", authMethod);
     localStorage.setItem("magpie_global_shortcut", globalShortcut);
-  }, [lockMode, lockTimeoutMs, authMethod, globalShortcut]);
+    localStorage.setItem("magpie_close_behavior", closeBehavior);
+  }, [lockMode, lockTimeoutMs, authMethod, globalShortcut, closeBehavior]);
 
   // ======== Handlers ========
   const handleUnlock = () => {
@@ -272,6 +328,8 @@ function App() {
         onOpenPatternSetup={() => { setShowSettings(false); setShowPatternSetup(true); }}
         globalShortcut={globalShortcut}
         onGlobalShortcutChange={setGlobalShortcut}
+        closeBehavior={closeBehavior}
+        onCloseBehaviorChange={setCloseBehavior}
         onManageLabels={() => { setShowSettings(false); setShowLabelManager(true); }}
       />
 
@@ -315,6 +373,20 @@ function App() {
         onSetSuccess={() => {
           setShowPatternSetup(false);
           showToast("Pattern lock updated successfully!");
+        }}
+      />
+
+      {/* Close Confirm Dialog */}
+      <CloseConfirmDialog
+        isOpen={showCloseConfirm}
+        onCancel={() => setShowCloseConfirm(false)}
+        onExit={async () => {
+             setShowCloseConfirm(false);
+             await exitApp();
+        }}
+        onMinimizeToTray={async () => {
+             setShowCloseConfirm(false);
+             await hideWindow();
         }}
       />
 

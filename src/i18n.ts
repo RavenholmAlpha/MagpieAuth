@@ -102,7 +102,18 @@ const resources = {
         "patternAuthDesc": "MagpieAuth uses a highly secure 16-node 4x4 coordinate pattern alternative. Your pattern is securely hashed using the Argon2id algorithm.",
         "advanced": "Advanced / System",
         "globalShortcut": "Global Shortcut",
-        "globalShortcutDesc": "Press this key combination anywhere in Windows to quickly toggle MagpieAuth visibility."
+        "globalShortcutDesc": "Press this key combination anywhere in Windows to quickly toggle MagpieAuth visibility.",
+        "shortcutPlaceholder": "Click and press keys to set shortcut (Backspace to clear)",
+        "appearance": "Appearance",
+        "theme": "Theme",
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System",
+        "closeBehavior": "Close Button Behavior",
+        "closeBehavior_close": "Close",
+        "closeBehavior_tray": "Minimize to Tray",
+        "closeBehavior_ask": "Ask",
+        "closeBehaviorDesc": "Choose what happens when you click the window close (X) button."
       },
       "patternSetup": {
         "drawTitle": "Draw New Pattern",
@@ -111,6 +122,12 @@ const resources = {
         "confirmDesc": "Draw exactly the same pattern to confirm",
         "tooShort": "Pattern too short! Connect at least 4 dots.",
         "mismatch": "Patterns do not match. Try again."
+      },
+      "closeConfirm": {
+        "title": "Close Application",
+        "desc": "Do you want to exit the application completely or run in the background?",
+        "minimize": "Minimize to Tray",
+        "exit": "Exit completely"
       }
     }
   },
@@ -213,7 +230,18 @@ const resources = {
         "patternAuthDesc": "MagpieAuth 支持安全性极高的 4x4 (16个节点) 复杂滑动解锁备用方案。您的滑动坐标将通过 Argon2id 算法进行高强度哈希处理并保存在本地以防破解。",
         "advanced": "高级 / 系统功能",
         "globalShortcut": "全局唤醒快捷键",
-        "globalShortcutDesc": "在操作系统的任何位置按下此按键组合以快速唤醒或隐藏 MagpieAuth。"
+        "globalShortcutDesc": "在操作系统的任何位置按下此按键组合以快速唤醒或隐藏 MagpieAuth。",
+        "shortcutPlaceholder": "点击并按下键盘按键即可设置（使用退格键清空）",
+        "appearance": "外观 / 主题",
+        "theme": "主题模式",
+        "light": "日间模式",
+        "dark": "夜间模式",
+        "system": "跟随系统",
+        "closeBehavior": "关闭按钮行为",
+        "closeBehavior_close": "完全退出",
+        "closeBehavior_tray": "缩小到托盘",
+        "closeBehavior_ask": "每次询问",
+        "closeBehaviorDesc": "请选择当您点击窗口右上角的关闭 (X) 按钮时程序发生的事情。"
       },
       "patternSetup": {
         "drawTitle": "绘制新图案",
@@ -222,6 +250,12 @@ const resources = {
         "confirmDesc": "请再次绘制完全相同的图案以确认",
         "tooShort": "图案太短！请至少连接 4 个点。",
         "mismatch": "两次绘制的图案不一致，请重试。"
+      },
+      "closeConfirm": {
+        "title": "关闭程序",
+        "desc": "您希望完全退出程序，还是将程序缩小至系统托盘？",
+        "minimize": "缩小到托盘",
+        "exit": "完全退出"
       }
     }
   }

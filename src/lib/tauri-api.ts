@@ -106,6 +106,26 @@ export async function toggleWindowVisibility(): Promise<void> {
   return invoke<void>("toggle_window_visibility");
 }
 
+export async function hideWindow(): Promise<void> {
+  return invoke<void>("hide_window");
+}
+
+export async function closeWindow(): Promise<void> {
+  return invoke<void>("close_window");
+}
+
+export async function exitApp(): Promise<void> {
+  return invoke<void>("exit_app");
+}
+
+export async function registerGlobalShortcut(shortcut: string): Promise<void> {
+  return invoke<void>("register_global_shortcut", { shortcut });
+}
+
+export async function syncLockState(isLocked: boolean): Promise<void> {
+  return invoke<void>("sync_lock_state", { isLocked });
+}
+
 // ============================================================
 // Export / Import
 // ============================================================

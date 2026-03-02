@@ -185,8 +185,8 @@ pub fn get_totp_code(state: State<'_, AppState>, id: String) -> totp::TotpCodeRe
 // ============================================================
 
 #[tauri::command]
-pub async fn verify_system_auth() -> Result<bool, String> {
-    auth::verify_user().await
+pub async fn verify_system_auth(window: tauri::Window) -> Result<bool, String> {
+    auth::verify_user(window).await
 }
 
 #[tauri::command]
@@ -284,12 +284,13 @@ struct ExportData {
 
 #[tauri::command]
 pub async fn export_vault(
+    window: tauri::Window,
     state: State<'_, AppState>,
     password: String,
     file_path: String,
 ) -> Result<(), String> {
     // Verify user identity
-    match auth::verify_user().await {
+    match auth::verify_user(window).await {
         Ok(true) => {}
         Ok(false) => return Err("Authentication denied".into()),
         Err(e) => return Err(format!("Authentication error: {}", e)),
@@ -413,6 +414,18 @@ pub fn close_window(window: tauri::Window) {
     }
 }
 
+#[tauri::command]
+pub fn hide_window(window: tauri::Window) {
+    if let Err(e) = window.hide() {
+        eprintln!("Failed to hide window: {}", e);
+    }
+}
+
+#[tauri::command]
+pub fn exit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
 // ============================================================
 // Global Shortcuts
 // ============================================================
@@ -422,14 +435,68 @@ pub fn toggle_window_visibility(app: tauri::AppHandle) {
     use tauri::Manager;
     if let Some(window) = app.get_webview_window("main") {
         match window.is_visible() {
-            Ok(true) => {
-                let _ = window.hide();
-            }
             Ok(false) => {
+                let _ = window.unminimize();
                 let _ = window.show();
                 let _ = window.set_focus();
             }
+            Ok(true) => {
+                // If it is visible but minimized, unminimize it
+                if let Ok(true) = window.is_minimized() {
+                    let _ = window.unminimize();
+                    let _ = window.set_focus();
+                } else if let Ok(false) = window.is_focused() {
+                    // Visible and not minimized, but not focused -> bring to front
+                    let _ = window.set_focus();
+                } else {
+                    // It is visible, not minimized, and focused -> hide it
+                    let _ = window.hide();
+                }
+            }
             Err(_) => {}
         }
+    }
+}
+
+#[tauri::command]
+pub fn register_global_shortcut(app: tauri::AppHandle, shortcut: String) -> Result<(), String> {
+    use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
+
+    // Unregister all existing shortcuts
+    let _ = app.global_shortcut().unregister_all();
+
+    if shortcut.is_empty() {
+        return Ok(());
+    }
+
+    let parsed_shortcut = match shortcut.parse::<Shortcut>() {
+        Ok(s) => s,
+        Err(_) => {
+            return Err(format!("Invalid shortcut format: {}", shortcut));
+        }
+    };
+
+    app.global_shortcut()
+        .on_shortcut(parsed_shortcut, move |app, _shortcut, event| {
+            if event.state() == ShortcutState::Pressed {
+                toggle_window_visibility(app.clone());
+            }
+        })
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn sync_lock_state(
+    lock_i: tauri::State<'_, tauri::menu::MenuItem<tauri::Wry>>,
+    is_locked: bool,
+) {
+    if is_locked {
+        let _ = lock_i.set_text("已锁定 (Locked)");
+        let _ = lock_i.set_enabled(false);
+    } else {
+        let _ = lock_i.set_text("立刻锁定 (Lock)");
+        let _ = lock_i.set_enabled(true);
     }
 }

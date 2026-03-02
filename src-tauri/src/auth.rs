@@ -15,12 +15,41 @@ use windows::Security::Credentials::UI::{
     UserConsentVerificationResult, UserConsentVerifier, UserConsentVerifierAvailability,
 };
 
+#[cfg(windows)]
+use windows::Win32::System::WinRT::IUserConsentVerifierInterop;
+
 /// Verify user identity via system authentication
 /// Returns true if authenticated, false otherwise
-pub async fn verify_user() -> Result<bool, String> {
+pub async fn verify_user(window: tauri::Window) -> Result<bool, String> {
     #[cfg(windows)]
     {
+        use windows::core::Interface;
+
         let msg = HSTRING::from("MagpieAuth requires your identity to unlock the secure vault.");
+        let hwnd_raw = window
+            .hwnd()
+            .map_err(|e| format!("Get HWND error: {}", e))?;
+        let hwnd = windows::Win32::Foundation::HWND(hwnd_raw.0 as isize);
+
+        // First attempt proper interop
+        let interop_future = if let Ok(factory) =
+            windows::core::factory::<UserConsentVerifier, IUserConsentVerifierInterop>()
+        {
+            unsafe { factory.RequestVerificationForWindowAsync(hwnd, &msg).ok() }
+        } else {
+            None
+        };
+
+        if let Some(future) = interop_future {
+            let future: windows::Foundation::IAsyncOperation<UserConsentVerificationResult> =
+                future;
+            let result = future
+                .await
+                .map_err(|e| format!("Verification await failed: {}", e))?;
+            return Ok(result == UserConsentVerificationResult::Verified);
+        }
+
+        // Fallback to standard request if Interop fails
         let future = UserConsentVerifier::RequestVerificationAsync(&msg)
             .map_err(|e| format!("Failed to request verification: {}", e))?;
 

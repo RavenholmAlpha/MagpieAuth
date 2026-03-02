@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use totp_rs::{Algorithm, Secret, TOTP};
+use totp_rs::{Algorithm, TOTP};
 
 /// TOTP code response sent to frontend
 #[derive(Debug, Clone, Serialize, Deserialize)]

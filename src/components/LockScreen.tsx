@@ -21,6 +21,7 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
   const authMethod: AuthMethod = (localStorage.getItem("magpie_auth_method") as AuthMethod) || "system";
 
   const handleSystemUnlock = async () => {
+    if (isVerifying) return;
     setIsVerifying(true);
     setError(null);
     try {
