@@ -22,7 +22,7 @@ fn main() {
     let code_std = totp_std.generate(now);
 
     // Our usage inside MagpieAuth
-    let mut raw_secret = secret_str.to_string();
+    let raw_secret = secret_str.to_string();
     let unpadded = raw_secret.trim_end_matches('=');
     let secret_bytes =
         base32::decode(base32::Alphabet::Rfc4648 { padding: false }, unpadded).unwrap();
