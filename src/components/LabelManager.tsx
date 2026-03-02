@@ -117,7 +117,7 @@ export function LabelManager({ isOpen, onClose, onLabelsChange }: LabelManagerPr
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 z-[60] bg-black/50 backdrop-blur-sm"
+            className="absolute inset-0 z-[60] bg-black/30 dark:bg-black/50 backdrop-blur-sm"
           />
 
           <motion.div
@@ -130,14 +130,14 @@ export function LabelManager({ isOpen, onClose, onLabelsChange }: LabelManagerPr
                        flex flex-col overflow-hidden"
           >
             {/* Header */}
-            <div className="relative flex items-center justify-center px-6 pt-5 pb-4 border-b border-white/5 shrink-0">
+            <div className="relative flex items-center justify-center px-6 pt-5 pb-4 border-b border-border-subtle shrink-0">
               <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-white/10" />
               <h2 className="text-[17px] font-semibold text-primary mt-1">
                 {t("labels.manageTitle", "Manage Labels")}
               </h2>
               <button
                 onClick={onClose}
-                className="absolute right-6 top-1/2 -translate-y-1/2 mt-1 w-8 h-8 rounded-full flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.1] transition-colors duration-200 cursor-pointer shrink-0"
+                className="absolute right-6 top-1/2 -translate-y-1/2 mt-1 w-8 h-8 rounded-full flex items-center justify-center bg-black/5 dark:bg-white/[0.04] hover:bg-black/10 dark:hover:bg-white/[0.1] transition-colors duration-200 cursor-pointer shrink-0"
               >
                 <X className="w-4 h-4 text-muted" strokeWidth={2} />
               </button>
@@ -200,7 +200,7 @@ export function LabelManager({ isOpen, onClose, onLabelsChange }: LabelManagerPr
                             onCancel={handleCancelEdit}
                           />
                         ) : (
-                          <div className="group flex items-center gap-3 p-3.5 glass-surface rounded-xl border border-white/5 transition-colors hover:bg-white/[0.06]">
+                          <div className="group flex items-center gap-3 p-3.5 glass-surface rounded-xl border border-border-subtle transition-colors hover:bg-black/5 dark:hover:bg-white/[0.06]">
                             <div 
                               className="w-4 h-4 rounded-full shrink-0 shadow-inner border border-white/10"
                               style={{ backgroundColor: label.color }}
@@ -263,7 +263,7 @@ function LabelEditorRow({
           value={name}
           onChange={(e) => onNameChange(e.target.value)}
           placeholder={t("labels.namePlaceholder", "Label name")}
-          className="flex-1 px-3 py-2 text-sm glass-surface rounded-lg border-white/10 text-primary placeholder:text-muted-dark/50 focus:border-white/30 outline-none"
+          className="flex-1 px-3 py-2 text-sm glass-surface rounded-lg border-border-subtle text-primary placeholder:text-muted-dark/50 focus:border-border outline-none"
           onKeyDown={(e) => {
             if (e.key === 'Enter') onSave();
             if (e.key === 'Escape') onCancel();

@@ -1,5 +1,6 @@
 import { Search, Plus, Settings, Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useTheme } from "../hooks/useTheme";
 
 interface HeaderProps {
   searchQuery: string;
@@ -17,15 +18,15 @@ export function Header({
   onManualLock,
 }: HeaderProps) {
   const { t } = useTranslation();
+  const { actualTheme } = useTheme();
 
   return (
-    <div className="flex flex-col gap-3 px-4 py-3 glass-surface border-b-0 shrink-0 z-10 sticky top-0 shadow-sm border-white/5">
+    <div className="flex flex-col gap-3 px-4 py-3 glass-surface border-b-0 shrink-0 z-10 sticky top-0 shadow-sm border-border-subtle transition-colors">
       {/* Top Bar: Title + Actions */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-white/90 to-white/60
-                          shadow-md flex items-center justify-center shrink-0">
-            <div className="w-2.5 h-2.5 rounded-[3px] bg-background/90" />
+          <div className="w-7 h-7 shrink-0 overflow-hidden flex items-center justify-center">
+            <img src={actualTheme === "dark" ? "/MPAW.png" : "/MPA.png"} alt="Logo" className="w-full h-full object-contain drop-shadow-md transition-opacity" />
           </div>
           <h1 className="text-lg font-semibold tracking-tight text-primary drop-shadow-md">
             {t("app.title")}
@@ -36,7 +37,7 @@ export function Header({
           <button
             onClick={onManualLock}
             className="w-9 h-9 rounded-full flex items-center justify-center
-                       bg-white/5 hover:bg-white/20 active:scale-95 transition-all duration-200 cursor-pointer"
+                       bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/20 active:scale-95 transition-all duration-200 cursor-pointer"
             title={t("app.lockVault")}
           >
             <Lock className="w-5 h-5 text-primary/80" strokeWidth={1.5} />
@@ -44,8 +45,8 @@ export function Header({
           <button
             onClick={onAddNew}
             className="w-9 h-9 rounded-full flex items-center justify-center
-                       bg-white/10 border border-white/10 shadow-sm
-                       hover:bg-white/20 active:scale-95 transition-all duration-200 cursor-pointer"
+                       bg-black/5 dark:bg-white/10 border border-border-subtle shadow-sm
+                       hover:bg-black/10 dark:hover:bg-white/20 active:scale-95 transition-all duration-200 cursor-pointer"
             title={t("app.addNewItem")}
           >
             <Plus className="w-5 h-5 text-primary" strokeWidth={2} />
@@ -53,7 +54,7 @@ export function Header({
           <button
             onClick={onOpenSettings}
             className="w-9 h-9 rounded-full flex items-center justify-center
-                       bg-transparent hover:bg-white/10
+                       bg-transparent hover:bg-black/5 dark:hover:bg-white/10
                        transition-all duration-200 cursor-pointer"
             title={t("app.settings")}
           >
@@ -63,7 +64,7 @@ export function Header({
       </div>
 
       {/* Search Bar - Flex Layout overrides absolute positioning overlapping bug */}
-      <div className="flex items-center w-full h-11 px-3.5 rounded-xl bg-black/40 border border-white/10 shadow-inner focus-within:border-white/20 focus-within:bg-black/50 transition-all duration-200 mt-1 mb-1 group">
+      <div className="flex items-center w-full h-11 px-3.5 rounded-xl bg-surface-sunken border border-border-subtle shadow-inner focus-within:border-border focus-within:bg-background transition-all duration-200 mt-1 mb-1 group">
         <Search className="w-4 h-4 text-muted-dark group-focus-within:text-primary transition-colors shrink-0" strokeWidth={2} />
         <input
           type="text"

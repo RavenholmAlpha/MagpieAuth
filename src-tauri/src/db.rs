@@ -134,7 +134,7 @@ pub fn search_items(conn: &Connection, query: &str) -> Result<Vec<VaultItemBase>
         "SELECT v.id, v.title, v.account, v.encrypted_password IS NOT NULL, v.encrypted_totp_secret IS NOT NULL, v.created_at, v.updated_at, v.label_id, l.name, l.color
          FROM vault_items v
          LEFT JOIN labels l ON v.label_id = l.id
-         WHERE v.title LIKE ?1 OR v.account LIKE ?1
+         WHERE v.title LIKE ?1 OR v.account LIKE ?1 OR l.name LIKE ?1
          ORDER BY v.updated_at DESC"
     )?;
 

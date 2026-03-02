@@ -185,8 +185,13 @@ pub fn get_totp_code(state: State<'_, AppState>, id: String) -> totp::TotpCodeRe
 // ============================================================
 
 #[tauri::command]
-pub fn verify_system_auth() -> Result<bool, String> {
-    auth::verify_user()
+pub async fn verify_system_auth() -> Result<bool, String> {
+    auth::verify_user().await
+}
+
+#[tauri::command]
+pub async fn check_system_auth_available() -> bool {
+    auth::is_auth_available().await
 }
 
 #[tauri::command]
@@ -278,13 +283,13 @@ struct ExportData {
 }
 
 #[tauri::command]
-pub fn export_vault(
+pub async fn export_vault(
     state: State<'_, AppState>,
     password: String,
     file_path: String,
 ) -> Result<(), String> {
     // Verify user identity
-    match auth::verify_user() {
+    match auth::verify_user().await {
         Ok(true) => {}
         Ok(false) => return Err("Authentication denied".into()),
         Err(e) => return Err(format!("Authentication error: {}", e)),

@@ -6,7 +6,7 @@ export function TitleBar() {
   return (
     <div
       data-tauri-drag-region
-      className="h-9 w-full flex items-center justify-between px-2 shrink-0 glass-surface border-b border-white/5 bg-black/20 backdrop-blur-md relative z-50 select-none cursor-default"
+      className="h-9 w-full flex items-center justify-between px-2 shrink-0 glass-surface border-b border-border-subtle backdrop-blur-md relative z-50 select-none cursor-default"
     >
       {/* Decorative drag handle */}
       <div 

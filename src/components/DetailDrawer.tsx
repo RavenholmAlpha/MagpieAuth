@@ -92,7 +92,7 @@ export function DetailDrawer({ item, onClose, onEdit, onDeleted }: DetailDrawerP
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={handleClose}
-            className="absolute inset-0 z-40 bg-black/40 backdrop-blur-sm"
+            className="absolute inset-0 z-40 bg-black/10 dark:bg-black/40 backdrop-blur-sm"
           />
 
           {/* Drawer Panel (Bottom Sheet) */}
@@ -181,7 +181,7 @@ export function DetailDrawer({ item, onClose, onEdit, onDeleted }: DetailDrawerP
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 px-4 py-3.5 rounded-xl bg-black/20 border border-white/5 shadow-inner
+                    <div className="flex-1 px-4 py-3.5 rounded-xl bg-surface-sunken border border-border-subtle shadow-inner
                                     text-[15px] font-mono text-primary/90">
                       {passwordVisible && password ? password : "••••••••••••"}
                     </div>
@@ -229,7 +229,7 @@ export function DetailDrawer({ item, onClose, onEdit, onDeleted }: DetailDrawerP
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 px-4 py-3.5 rounded-xl bg-black/20 border border-white/5 shadow-inner
+                    <div className="flex-1 px-4 py-3.5 rounded-xl bg-surface-sunken border border-border-subtle shadow-inner
                                     text-[15px] text-primary/90 truncate">
                       {item.account}
                     </div>

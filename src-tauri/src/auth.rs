@@ -17,14 +17,15 @@ use windows::Security::Credentials::UI::{
 
 /// Verify user identity via system authentication
 /// Returns true if authenticated, false otherwise
-pub fn verify_user() -> Result<bool, String> {
+pub async fn verify_user() -> Result<bool, String> {
     #[cfg(windows)]
     {
         let msg = HSTRING::from("MagpieAuth requires your identity to unlock the secure vault.");
         let future = UserConsentVerifier::RequestVerificationAsync(&msg)
             .map_err(|e| format!("Failed to request verification: {}", e))?;
 
-        let result = futures::executor::block_on(async { future.await })
+        let result = future
+            .await
             .map_err(|e| format!("Verification await failed: {}", e))?;
 
         Ok(result == UserConsentVerificationResult::Verified)
@@ -38,11 +39,11 @@ pub fn verify_user() -> Result<bool, String> {
 }
 
 /// Check if the system supports biometric/PIN authentication
-pub fn is_auth_available() -> bool {
+pub async fn is_auth_available() -> bool {
     #[cfg(windows)]
     {
         if let Ok(future) = UserConsentVerifier::CheckAvailabilityAsync() {
-            if let Ok(result) = futures::executor::block_on(async { future.await }) {
+            if let Ok(result) = future.await {
                 return result == UserConsentVerifierAvailability::Available;
             }
         }

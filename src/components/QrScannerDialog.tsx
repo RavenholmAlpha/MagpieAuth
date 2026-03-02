@@ -92,7 +92,7 @@ export function QrScannerDialog({ isOpen, onClose, onScanSuccess }: QrScannerDia
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 z-[60] bg-black/60 backdrop-blur-md"
+            className="absolute inset-0 z-[60] bg-black/30 dark:bg-black/60 backdrop-blur-md"
           />
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -114,7 +114,7 @@ export function QrScannerDialog({ isOpen, onClose, onScanSuccess }: QrScannerDia
               </button>
             </div>
             
-            <div className="p-4 bg-black/40 flex items-center justify-center min-h-[250px]">
+            <div className="p-4 bg-surface-sunken flex items-center justify-center min-h-[250px]">
               {error ? (
                 <div className="text-xs text-danger-text text-center px-4">{error}</div>
               ) : (

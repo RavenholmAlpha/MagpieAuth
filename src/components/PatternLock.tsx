@@ -186,7 +186,7 @@ export function PatternLock({ onComplete, error, size = 280, gridSize = 4 }: Pat
             <polyline
               points={path.map(i => `${points[i]?.x},${points[i]?.y}`).join(' ')}
               fill="none"
-              stroke={error ? "rgba(239, 68, 68, 0.7)" : "rgba(255, 255, 255, 0.5)"} // red-500 if error
+              stroke={error ? "var(--color-danger)" : "var(--color-pattern-stroke)"}
               strokeWidth="4"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -198,7 +198,7 @@ export function PatternLock({ onComplete, error, size = 280, gridSize = 4 }: Pat
               y1={points[path[path.length - 1]]?.y}
               x2={currentPos.x}
               y2={currentPos.y}
-              stroke="rgba(255, 255, 255, 0.5)"
+              stroke="var(--color-pattern-stroke)"
               strokeWidth="4"
               strokeLinecap="round"
             />
@@ -211,12 +211,12 @@ export function PatternLock({ onComplete, error, size = 280, gridSize = 4 }: Pat
           return (
             <div
               key={i}
-              className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-200 pointer-events-none ${
+              className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-200 pointer-events-none opacity-80 ${
                 isActive 
                     ? error 
-                        ? "bg-danger shadow-[0_0_15px_rgba(239,68,68,0.5)] scale-125" 
-                        : "bg-primary shadow-[0_0_15px_rgba(255,255,255,0.4)] scale-125"
-                    : "bg-white/20"
+                        ? "bg-danger shadow-[0_0_15px_var(--color-danger)] scale-125" 
+                        : "bg-primary shadow-[0_0_15px_var(--color-pattern-glow)] scale-125"
+                    : "bg-primary/20"
               }`}
               style={{
                 left: p.x,

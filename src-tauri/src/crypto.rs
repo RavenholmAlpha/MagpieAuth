@@ -23,8 +23,6 @@ pub enum CryptoError {
 // Internal Master Key (IMK) Management
 // ============================================================
 
-const CREDENTIAL_TARGET: &str = "MagpieAuth_IMK";
-
 /// Generate a new 256-bit Internal Master Key (wrapped in Zeroizing for auto-cleanup)
 pub fn generate_imk() -> Zeroizing<[u8; 32]> {
     let mut key = Zeroizing::new([0u8; 32]);
@@ -32,71 +30,159 @@ pub fn generate_imk() -> Zeroizing<[u8; 32]> {
     key
 }
 
-/// Store IMK in Windows Credential Manager
-/// For dev/initial build, uses a local file fallback in AppData
+#[cfg(windows)]
+use windows::Win32::Security::Cryptography::{
+    CryptProtectData, CryptUnprotectData, CRYPTPROTECT_UI_FORBIDDEN, CRYPT_INTEGER_BLOB,
+};
+
+/// Store IMK using Windows DPAPI to a local file
 pub fn store_imk(key: &[u8; 32]) -> Result<(), CryptoError> {
-    let entry = keyring::Entry::new("MagpieAuth", "imk")
-        .map_err(|e| CryptoError::CredentialError(e.to_string()))?;
-    let hex_key = hex::encode(key);
-    entry
-        .set_password(&hex_key)
-        .map_err(|e| CryptoError::CredentialError(e.to_string()))?;
-    Ok(())
-}
+    let app_data =
+        dirs::data_dir().ok_or_else(|| CryptoError::CredentialError("No app data dir".into()))?;
+    let key_path = app_data.join("MagpieAuth").join(".imk_dpapi");
 
-/// Retrieve IMK from storage (wrapped in Zeroizing for auto-cleanup)
-pub fn retrieve_imk() -> Result<[u8; 32], CryptoError> {
-    let entry = keyring::Entry::new("MagpieAuth", "imk")
+    std::fs::create_dir_all(key_path.parent().unwrap())
         .map_err(|e| CryptoError::CredentialError(e.to_string()))?;
 
-    // Try to get from keyring
-    match entry.get_password() {
-        Ok(hex_key) => {
-            let data =
-                hex::decode(&hex_key).map_err(|e| CryptoError::CredentialError(e.to_string()))?;
+    #[cfg(windows)]
+    {
+        let mut data_in = CRYPT_INTEGER_BLOB {
+            cbData: key.len() as u32,
+            pbData: key.as_ptr() as *mut u8,
+        };
+        let mut data_out = CRYPT_INTEGER_BLOB {
+            cbData: 0,
+            pbData: std::ptr::null_mut(),
+        };
 
-            if data.len() != 32 {
-                return Err(CryptoError::CredentialError("Invalid IMK length".into()));
+        // SAFETY: We provide valid pointers to CryptProtectData structure
+        let res = unsafe {
+            CryptProtectData(
+                &mut data_in,
+                None, // No description
+                None, // No entropy
+                None, // No reserved
+                None, // No prompt struct
+                CRYPTPROTECT_UI_FORBIDDEN,
+                &mut data_out,
+            )
+        };
+
+        if res.is_ok() {
+            // Read output buffer
+            let encrypted_data =
+                unsafe { std::slice::from_raw_parts(data_out.pbData, data_out.cbData as usize) };
+
+            // Base64 encode it for safe text storage
+            use base64::{engine::general_purpose, Engine as _};
+            let b64 = general_purpose::STANDARD.encode(encrypted_data);
+
+            // Free the memory allocated by CryptProtectData
+            unsafe {
+                let _ = windows::Win32::Foundation::LocalFree(windows::Win32::Foundation::HLOCAL(
+                    data_out.pbData as *mut core::ffi::c_void,
+                ));
             }
 
-            let mut key = [0u8; 32];
-            key.copy_from_slice(&data);
-            Ok(key)
-        }
-        Err(_) => {
-            // Check for legacy file migration
-            let app_data = dirs::data_dir()
-                .ok_or_else(|| CryptoError::CredentialError("No app data dir".into()))?;
-            let key_path = app_data.join("MagpieAuth").join(".imk");
-
-            if key_path.exists() {
-                let data = std::fs::read(&key_path)
-                    .map_err(|e| CryptoError::CredentialError(e.to_string()))?;
-
-                if data.len() != 32 {
-                    return Err(CryptoError::CredentialError(
-                        "Invalid legacy IMK length".into(),
-                    ));
-                }
-
-                let mut key = [0u8; 32];
-                key.copy_from_slice(&data);
-
-                // Migrate to keyring
-                let hex_key = hex::encode(key);
-                let _ = entry.set_password(&hex_key);
-                // Delete legacy file
-                let _ = std::fs::remove_file(key_path);
-
-                return Ok(key);
-            }
-
-            // First run: generate and store a new IMK
-            let imk = generate_imk();
-            store_imk(&imk)?;
-            return Ok(*imk);
+            std::fs::write(&key_path, b64)
+                .map_err(|e| CryptoError::CredentialError(e.to_string()))?;
+            return Ok(());
+        } else {
+            return Err(CryptoError::CredentialError(
+                "DPAPI Protection Failed".into(),
+            ));
         }
     }
+
+    #[cfg(not(windows))]
+    {
+        use base64::{engine::general_purpose, Engine as _};
+        let b64 = general_purpose::STANDARD.encode(key);
+        std::fs::write(&key_path, b64).map_err(|e| CryptoError::CredentialError(e.to_string()))?;
+        return Ok(());
+    }
+}
+
+/// Retrieve IMK from DPAPI storage (wrapped in Zeroizing for auto-cleanup)
+pub fn retrieve_imk() -> Result<[u8; 32], CryptoError> {
+    let app_data =
+        dirs::data_dir().ok_or_else(|| CryptoError::CredentialError("No app data dir".into()))?;
+    let key_path = app_data.join("MagpieAuth").join(".imk_dpapi");
+
+    if key_path.exists() {
+        let file_data = std::fs::read_to_string(&key_path)
+            .map_err(|e| CryptoError::CredentialError(e.to_string()))?;
+
+        use base64::{engine::general_purpose, Engine as _};
+        if let Ok(encrypted_data) = general_purpose::STANDARD.decode(file_data.trim()) {
+            #[cfg(windows)]
+            {
+                let mut data_in = CRYPT_INTEGER_BLOB {
+                    cbData: encrypted_data.len() as u32,
+                    pbData: encrypted_data.as_ptr() as *mut u8,
+                };
+                let mut data_out = CRYPT_INTEGER_BLOB {
+                    cbData: 0,
+                    pbData: std::ptr::null_mut(),
+                };
+
+                let res = unsafe {
+                    CryptUnprotectData(
+                        &mut data_in,
+                        None,
+                        None,
+                        None,
+                        None,
+                        CRYPTPROTECT_UI_FORBIDDEN,
+                        &mut data_out,
+                    )
+                };
+
+                if res.is_ok() {
+                    let decrypted_data = unsafe {
+                        std::slice::from_raw_parts(data_out.pbData, data_out.cbData as usize)
+                    };
+
+                    if decrypted_data.len() == 32 {
+                        let mut key = [0u8; 32];
+                        key.copy_from_slice(decrypted_data);
+
+                        unsafe {
+                            let _ = windows::Win32::Foundation::LocalFree(
+                                windows::Win32::Foundation::HLOCAL(
+                                    data_out.pbData as *mut core::ffi::c_void,
+                                ),
+                            );
+                        }
+
+                        return Ok(key);
+                    }
+
+                    unsafe {
+                        let _ = windows::Win32::Foundation::LocalFree(
+                            windows::Win32::Foundation::HLOCAL(
+                                data_out.pbData as *mut core::ffi::c_void,
+                            ),
+                        );
+                    }
+                }
+            }
+
+            #[cfg(not(windows))]
+            {
+                if encrypted_data.len() == 32 {
+                    let mut key = [0u8; 32];
+                    key.copy_from_slice(&encrypted_data);
+                    return Ok(key);
+                }
+            }
+        }
+    }
+
+    // First run or DPAPI key lost: generate and store a new IMK
+    let imk = generate_imk();
+    store_imk(&imk)?;
+    Ok(*imk)
 }
 
 // ============================================================

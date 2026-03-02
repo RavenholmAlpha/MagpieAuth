@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shield, Fingerprint } from "lucide-react";
+import { Fingerprint } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { verifySystemAuth, verifyPatternLock } from "../lib/tauri-api";
+import { useTheme } from "../hooks/useTheme";
 import { PatternLock } from "./PatternLock";
 import type { AuthMethod } from "../App";
 
@@ -12,6 +13,7 @@ interface LockScreenProps {
 
 export function LockScreen({ onUnlock }: LockScreenProps) {
   const { t } = useTranslation();
+  const { actualTheme } = useTheme();
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [unlocked, setUnlocked] = useState(false);
@@ -66,7 +68,7 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
           initial={{ opacity: 1 }}
           exit={{ opacity: 0, scale: 1.02 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
-          className="absolute inset-0 z-50 flex items-center justify-center bg-[#0a0a0a]/95 backdrop-blur-[40px]"
+          className="absolute inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-[40px]"
         >
           {/* Subtle gradient circles in background */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -84,15 +86,15 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
             transition={{ delay: 0.2, duration: 0.5 }}
             className="flex flex-col items-center gap-8 relative z-10"
           >
-            {/* Logo / Shield Icon */}
+            {/* Logo */}
             <motion.div
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
               className="relative"
             >
-              <div className="w-20 h-20 rounded-2xl glass flex items-center justify-center">
-                <Shield className="w-10 h-10 text-primary opacity-80" strokeWidth={1.5} />
+              <div className="w-20 h-20 rounded-2xl glass flex items-center justify-center overflow-hidden">
+                <img src={actualTheme === "dark" ? "/MPAW.png" : "/MPA.png"} alt="MagpieAuth Logo" className="w-16 h-16 object-contain" />
               </div>
               <div
                 className="absolute -inset-1 rounded-2xl opacity-20 bg-gradient-to-br from-white/10 to-transparent"
@@ -110,7 +112,7 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
             </div>
 
             {authMethod === "pattern" ? (
-              <div className="bg-black/20 rounded-2xl p-4 border border-white/5 relative mb-2">
+              <div className="bg-surface-sunken rounded-2xl p-4 border border-border-subtle relative mb-2">
                 <PatternLock 
                   onComplete={handlePatternComplete} 
                   error={error} 

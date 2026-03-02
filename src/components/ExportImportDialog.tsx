@@ -89,7 +89,7 @@ export function ExportImportDialog({ isOpen, mode, onClose, onComplete }: Export
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm"
+            className="absolute inset-0 z-50 bg-black/30 dark:bg-black/50 backdrop-blur-sm"
           />
           <motion.div
             initial={{ y: "100%", opacity: 0 }}
@@ -100,7 +100,7 @@ export function ExportImportDialog({ isOpen, mode, onClose, onComplete }: Export
                        border-t border-x border-border-subtle shadow-2xl flex flex-col"
           >
             {/* Header */}
-            <div className="relative flex items-center justify-center px-6 pt-5 pb-4 border-b border-white/5 shrink-0">
+            <div className="relative flex items-center justify-center px-6 pt-5 pb-4 border-b border-border-subtle shrink-0">
               <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1.5 rounded-full bg-white/10" />
               <div className="flex items-center gap-2 mt-1">
                 {mode === "export" ? (
@@ -123,7 +123,7 @@ export function ExportImportDialog({ isOpen, mode, onClose, onComplete }: Export
 
             {/* Content */}
             <div className="px-6 py-5 space-y-5">
-              <div className="flex items-center gap-3 p-4 rounded-2xl glass-surface border-white/5 shadow-inner">
+              <div className="flex items-center gap-3 p-4 rounded-2xl glass-surface border-border-subtle shadow-inner">
                 <FileKey className="w-5 h-5 text-muted shrink-0" strokeWidth={1.5} />
                 <p className="text-xs text-muted leading-relaxed">
                   {mode === "export" ? t("exportImport.exportDesc") : t("exportImport.importDesc")}
@@ -140,10 +140,9 @@ export function ExportImportDialog({ isOpen, mode, onClose, onComplete }: Export
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={t("exportImport.passwordPlaceholder")}
                   className="w-full px-4 py-3.5 rounded-xl text-[15px]
-                             glass-surface border-white/5 shadow-inner text-primary
+                             glass-surface border-border-subtle shadow-inner text-primary
                              placeholder:text-muted-dark/50
-                             focus:border-white/20 focus:bg-white/[0.05]
-                             transition-all duration-300 outline-none"
+                             focus:border-border focus:bg-background transition-all duration-300 outline-none"
                 />
               </div>
 
@@ -158,10 +157,9 @@ export function ExportImportDialog({ isOpen, mode, onClose, onComplete }: Export
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Re-enter password"
                     className="w-full px-4 py-3.5 rounded-xl text-[15px]
-                               glass-surface border-white/5 shadow-inner text-primary
+                               glass-surface border-border-subtle shadow-inner text-primary
                                placeholder:text-muted-dark/50
-                               focus:border-white/20 focus:bg-white/[0.05]
-                               transition-all duration-300 outline-none"
+                               focus:border-border focus:bg-background transition-all duration-300 outline-none"
                   />
                 </div>
               )}

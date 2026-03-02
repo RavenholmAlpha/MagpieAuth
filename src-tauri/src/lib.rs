@@ -1,6 +1,6 @@
 mod auth;
 mod commands;
-mod crypto;
+pub mod crypto;
 mod db;
 mod totp;
 
@@ -34,6 +34,7 @@ pub fn run() {
             commands::get_password_plaintext,
             commands::get_totp_code,
             commands::verify_system_auth,
+            commands::check_system_auth_available,
             commands::set_pattern_lock,
             commands::verify_pattern_lock,
             commands::has_pattern_lock,

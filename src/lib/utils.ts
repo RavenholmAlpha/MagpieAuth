@@ -22,8 +22,14 @@ export async function copyToClipboard(text: string): Promise<boolean> {
  */
 export function stringToColorClass(str: string): string {
   const classes = [
-    "bg-zinc-700", "bg-zinc-600", "bg-stone-800", "bg-stone-600",
-    "bg-stone-900", "bg-stone-950", "bg-zinc-800", "bg-neutral-700",
+    "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400",
+    "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
+    "bg-violet-500/10 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400",
+    "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400",
+    "bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400",
+    "bg-cyan-500/10 text-cyan-600 dark:bg-cyan-500/20 dark:text-cyan-400",
+    "bg-fuchsia-500/10 text-fuchsia-600 dark:bg-fuchsia-500/20 dark:text-fuchsia-400",
+    "bg-zinc-500/10 text-zinc-600 dark:bg-zinc-500/20 dark:text-zinc-400",
   ];
   let hash = 0;
   for (let i = 0; i < str.length; i++) {

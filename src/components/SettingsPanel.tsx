@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Download, Upload, Info, Shield, Clock, Globe } from "lucide-react";
+import { X, Download, Upload, Info, Shield, Clock, Globe, Sun, Moon, Monitor } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useTheme } from "../hooks/useTheme";
+import { checkSystemAuthAvailable } from "../lib/tauri-api";
+import { AlertCircle } from "lucide-react";
 import type { LockMode, AuthMethod } from "../App";
 
 interface SettingsPanelProps {
@@ -37,11 +40,20 @@ export function SettingsPanel({
   onGlobalShortcutChange
 }: SettingsPanelProps) {
   const { t, i18n } = useTranslation();
+  const { theme, setTheme } = useTheme();
 
   const handleLanguageChange = (lang: string) => {
     i18n.changeLanguage(lang);
     localStorage.setItem("magpie_language", lang);
   };
+
+  const [systemAuthAvailable, setSystemAuthAvailable] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    checkSystemAuthAvailable()
+      .then((avail) => setSystemAuthAvailable(avail))
+      .catch(() => setSystemAuthAvailable(false));
+  }, []);
 
   return (
     <AnimatePresence>
@@ -92,7 +104,7 @@ export function SettingsPanel({
                     <Globe className="w-4 h-4 text-muted" strokeWidth={1.5} />
                     <span className="text-xs text-primary/80">{t("settings.chooseLanguage")}</span>
                   </div>
-                  <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+                  <div className="flex bg-surface-sunken p-1 rounded-xl border border-border-subtle">
                     <button
                       onClick={() => handleLanguageChange("en")}
                       className={`py-1.5 px-3 rounded-lg text-xs font-medium transition-all duration-200 ${i18n.language === "en" ? "bg-white/10 text-primary shadow-sm" : "text-muted-dark hover:text-muted"}`}
@@ -104,6 +116,39 @@ export function SettingsPanel({
                       className={`py-1.5 px-3 rounded-lg text-xs font-medium transition-all duration-200 ${i18n.language === "zh" ? "bg-white/10 text-primary shadow-sm" : "text-muted-dark hover:text-muted"}`}
                     >
                       中文
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              {/* Appearance / Theme */}
+              <section>
+                <h3 className="text-[11px] font-semibold text-primary/70 uppercase tracking-[0.1em] ml-1 mb-3">
+                  {t("settings.appearance", "Appearance")}
+                </h3>
+                <div className="rounded-2xl glass-surface border-white/5 shadow-inner p-5 space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Monitor className="w-4 h-4 text-muted" strokeWidth={1.5} />
+                    <span className="text-xs text-primary/80">{t("settings.theme", "Theme")}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 bg-surface-sunken p-1 rounded-xl border border-border-subtle">
+                    <button
+                      onClick={() => setTheme("light")}
+                      className={`flex items-center justify-center gap-2 py-1.5 px-2 rounded-lg text-xs font-medium transition-all duration-200 capitalize ${theme === "light" ? "bg-white/10 text-primary shadow-sm" : "text-muted-dark hover:text-muted hover:bg-white/5"}`}
+                    >
+                      <Sun className="w-3.5 h-3.5" /> {t("settings.light", "Light")}
+                    </button>
+                    <button
+                      onClick={() => setTheme("dark")}
+                      className={`flex items-center justify-center gap-2 py-1.5 px-2 rounded-lg text-xs font-medium transition-all duration-200 capitalize ${theme === "dark" ? "bg-white/10 text-primary shadow-sm" : "text-muted-dark hover:text-muted hover:bg-white/5"}`}
+                    >
+                      <Moon className="w-3.5 h-3.5" /> {t("settings.dark", "Dark")}
+                    </button>
+                    <button
+                      onClick={() => setTheme("system")}
+                      className={`flex items-center justify-center gap-2 py-1.5 px-2 rounded-lg text-xs font-medium transition-all duration-200 capitalize ${theme === "system" ? "bg-white/10 text-primary shadow-sm" : "text-muted-dark hover:text-muted hover:bg-white/5"}`}
+                    >
+                      <Monitor className="w-3.5 h-3.5" /> {t("settings.system", "System")}
                     </button>
                   </div>
                 </div>
@@ -154,12 +199,17 @@ export function SettingsPanel({
                       <span className="text-xs text-primary/80">{t("settings.authMethod")}</span>
                     </div>
 
-                    <div className="flex bg-black/40 p-1 rounded-xl border border-white/5 mb-2">
+                    <div className="flex bg-surface-sunken p-1 rounded-xl border border-border-subtle mb-2">
                        <button
                          onClick={() => onAuthMethodChange("system")}
-                         className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all duration-200 ${authMethod === "system" ? "bg-white/10 text-primary shadow-sm" : "text-muted-dark hover:text-muted"}`}
+                         disabled={systemAuthAvailable === false}
+                         className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all duration-200 
+                           ${authMethod === "system" ? "bg-white/10 text-primary shadow-sm" : "text-muted-dark hover:text-muted"}
+                           ${systemAuthAvailable === false ? "opacity-40 cursor-not-allowed" : ""}`}
+                         title={systemAuthAvailable === false ? "System Authentication is not available on this device" : ""}
                        >
                          {t("settings.systemAuth")}
+                         {systemAuthAvailable === false && <AlertCircle className="inline-block w-3 h-3 ml-1 text-danger-text/70" />}
                        </button>
                        <button
                          onClick={() => onAuthMethodChange("pattern")}
@@ -195,7 +245,7 @@ export function SettingsPanel({
                     </div>
                     
                     {/* Mode Selector */}
-                    <div className="grid grid-cols-3 gap-2 bg-black/40 p-1 rounded-xl border border-white/5">
+                    <div className="grid grid-cols-3 gap-2 bg-surface-sunken p-1 rounded-xl border border-border-subtle">
                       {(["strict", "normal", "relaxed"] as LockMode[]).map((mode) => (
                         <button
                           key={mode}
@@ -238,7 +288,7 @@ export function SettingsPanel({
                             step="15"
                             value={lockTimeoutMs / 1000}
                             onChange={(e) => onLockTimeoutChange(parseInt(e.target.value) * 1000)}
-                            className="w-full h-1.5 bg-black/40 rounded-lg appearance-none cursor-pointer
+                            className="w-full h-1.5 bg-surface-sunken rounded-lg appearance-none cursor-pointer
                                      [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 
                                      [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full 
                                      [&::-webkit-slider-thumb]:bg-white/80 [&::-webkit-slider-thumb]:shadow-md"
@@ -264,7 +314,7 @@ export function SettingsPanel({
                     <span className="text-xs text-primary/80">{t("settings.globalShortcut")}</span>
                     <input
                       type="text"
-                      className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs text-primary/90 font-mono tracking-wide placeholder:text-muted-dark focus:outline-none focus:border-white/20 transition-colors"
+                      className="w-full bg-surface-sunken border border-border-subtle rounded-lg px-3 py-2 text-xs text-primary/90 font-mono tracking-wide placeholder:text-muted-dark focus:outline-none focus:border-border transition-colors"
                       value={globalShortcut}
                       onChange={(e) => onGlobalShortcutChange(e.target.value)}
                       placeholder="e.g. CommandOrControl+Shift+L"

@@ -86,6 +86,10 @@ export async function verifySystemAuth(): Promise<boolean> {
   return invoke<boolean>("verify_system_auth");
 }
 
+export async function checkSystemAuthAvailable(): Promise<boolean> {
+  return invoke<boolean>("check_system_auth_available");
+}
+
 export async function setPatternLock(pattern: string): Promise<void> {
   return invoke<void>("set_pattern_lock", { pattern });
 }

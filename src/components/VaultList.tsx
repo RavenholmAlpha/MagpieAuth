@@ -74,8 +74,8 @@ function VaultItem({
       onClick={onSelect}
       className={cn(
         "group flex items-center gap-4 px-4 py-3.5 mb-2.5 rounded-2xl cursor-pointer transition-all duration-300",
-        "glass-surface hover:bg-white/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.1)]",
-        isSelected && "bg-white/[0.08] border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.3)] ring-1 ring-white/10"
+        "glass-surface hover:bg-black/5 dark:hover:bg-white/[0.06] shadow-[0_2px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.1)]",
+        isSelected && "bg-black/5 dark:bg-white/[0.08] border-border-subtle dark:border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] ring-1 ring-black/5 dark:ring-white/10"
       )}
     >
       {/* Avatar */}
@@ -100,13 +100,13 @@ function VaultItem({
       {/* Badges / Quick Actions */}
       <div className="flex items-center gap-2 shrink-0">
         {item.hasTotp && (
-          <span className="w-7 h-7 rounded-lg bg-black/20 flex items-center justify-center border border-white/5 shadow-inner" title={t("vaultList.totp")}>
-            <Clock className="w-3.5 h-3.5 text-muted-dark group-hover:text-primary/70 transition-colors" strokeWidth={2} />
+          <span className="w-7 h-7 rounded-lg bg-surface-sunken flex items-center justify-center border border-border-subtle shadow-inner" title={t("vaultList.totp")}>
+            <Clock className="w-3.5 h-3.5 text-muted-dark group-hover:text-primary transition-colors" strokeWidth={2} />
           </span>
         )}
         {item.hasPassword && (
-          <span className="w-7 h-7 rounded-lg bg-black/20 flex items-center justify-center border border-white/5 shadow-inner" title={t("vaultList.password")}>
-            <Key className="w-3.5 h-3.5 text-muted-dark group-hover:text-primary/70 transition-colors" strokeWidth={2} />
+          <span className="w-7 h-7 rounded-lg bg-surface-sunken flex items-center justify-center border border-border-subtle shadow-inner" title={t("vaultList.password")}>
+            <Key className="w-3.5 h-3.5 text-muted-dark group-hover:text-primary transition-colors" strokeWidth={2} />
           </span>
         )}
       </div>

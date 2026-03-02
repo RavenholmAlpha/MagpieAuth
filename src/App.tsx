@@ -14,6 +14,7 @@ import { getVaultItems, searchItems, getLabels, toggleWindowVisibility } from ".
 import type { VaultItemBase, Label } from "./types";
 import { PatternSetupDialog } from "./components/PatternSetupDialog";
 import { LabelManager } from "./components/LabelManager";
+import { SetupWizard } from "./components/SetupWizard";
 import { register, unregister } from "@tauri-apps/plugin-global-shortcut";
 
 export type LockMode = "strict" | "normal" | "relaxed";
@@ -25,6 +26,10 @@ function App() {
   const [items, setItems] = useState<VaultItemBase[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItem, setSelectedItem] = useState<VaultItemBase | null>(null);
+
+  const [isInitialized, setIsInitialized] = useState(() => {
+    return localStorage.getItem("magpie_is_initialized") === "true";
+  });
 
   // Settings state
   const [lockMode, setLockMode] = useState<LockMode>(() => {
@@ -73,7 +78,7 @@ function App() {
         });
         registered = true;
       } catch (e) {
-        console.error("Failed to register global shortcut:", e);
+        console.warn("Global shortcut registration skipped (likely not running in Tauri window):", e);
       }
     };
 
@@ -132,13 +137,13 @@ function App() {
 
   // ======== Auto-Lock Handlers ========
   const handleLock = useCallback(() => {
-    if (isLocked) return;
+    if (isLocked || !isInitialized) return;
     setIsLocked(true);
     setSelectedItem(null);
     setShowAddEdit(false);
     setShowSettings(false);
     setShowExportImport(false);
-  }, [isLocked]);
+  }, [isLocked, isInitialized]);
 
   useIdleLock(handleLock, lockMode, lockTimeoutMs);
 
@@ -202,9 +207,24 @@ function App() {
   return (
     <div className="h-screen w-screen flex justify-center bg-background overflow-hidden select-none">
       <div className="w-full max-w-[420px] h-full relative flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)] bg-background border-x border-white/5">
+        
+        {/* Setup Wizard */}
+        <AnimatePresence>
+          {!isInitialized && (
+            <SetupWizard
+              onComplete={(method) => {
+                setAuthMethod(method);
+                setIsInitialized(true);
+                localStorage.setItem("magpie_is_initialized", "true");
+                setIsLocked(false);
+              }}
+            />
+          )}
+        </AnimatePresence>
+
         {/* Lock Screen */}
         <AnimatePresence>
-          {isLocked && <LockScreen onUnlock={handleUnlock} />}
+          {isInitialized && isLocked && <LockScreen onUnlock={handleUnlock} />}
         </AnimatePresence>
 
         {/* Main Layout */}

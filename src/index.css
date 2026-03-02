@@ -7,20 +7,68 @@
    ============================================================ */
 
 @theme {
-  --color-background: #0a0a0a;
-  --color-surface: #1a1a1a;
-  --color-surface-hover: #222222;
-  --color-border: #27272a;
-  --color-border-subtle: #1f1f23;
-  --color-primary: #f4f4f5;
-  --color-muted: #a1a1aa;
-  --color-muted-dark: #71717a;
-  --color-accent: #3f3f46;
-  --color-accent-hover: #52525b;
-  --color-danger: #7f1d1d;
-  --color-danger-text: #fca5a5;
-  --color-success: #166534;
-  --color-success-text: #86efac;
+  --color-background: var(--bg);
+  --color-surface: var(--surf);
+  --color-surface-hover: var(--surf-h);
+  --color-border: var(--bord);
+  --color-border-subtle: var(--bord-sub);
+  --color-primary: var(--prim);
+  --color-muted: var(--mut);
+  --color-muted-dark: var(--mut-d);
+  --color-accent: var(--acc);
+  --color-accent-hover: var(--acc-h);
+  --color-danger: var(--dang);
+  --color-danger-text: var(--dang-t);
+  --color-success: var(--succ);
+  --color-success-text: var(--succ-t);
+  
+  --color-surface-sunken: var(--surf-sunk);
+  --color-pattern-stroke: var(--pat-stroke);
+  --color-pattern-glow: var(--pat-glow);
+}
+
+@layer base {
+  :root {
+    --bg: #fafafa;
+    --surf: #ffffff;
+    --surf-h: #f4f4f5;
+    --bord: #e4e4e7;
+    --bord-sub: #f4f4f5;
+    --prim: #0f0f11;
+    --mut: #71717a;
+    --mut-d: #a1a1aa;
+    --acc: #e4e4e7;
+    --acc-h: #d4d4d8;
+    --dang: #fee2e2;
+    --dang-t: #b91c1c;
+    --succ: #dcfce7;
+    --succ-t: #15803d;
+    
+    --surf-sunk: rgba(0, 0, 0, 0.04);
+    --pat-stroke: rgba(0, 0, 0, 0.4);
+    --pat-glow: rgba(0, 0, 0, 0.2);
+  }
+
+  .dark {
+    --bg: #0a0a0a;
+    --surf: #1a1a1a;
+    --surf-h: #222222;
+    --bord: #27272a;
+    --bord-sub: #1f1f23;
+    --prim: #f4f4f5;
+    --mut: #a1a1aa;
+    --mut-d: #71717a;
+    --acc: #3f3f46;
+    --acc-h: #52525b;
+    --dang: #7f1d1d;
+    --dang-t: #fca5a5;
+    --succ: #166534;
+    --succ-t: #86efac;
+    
+    --surf-sunk: rgba(0, 0, 0, 0.3);
+    --pat-stroke: rgba(255, 255, 255, 0.5);
+    --pat-glow: rgba(255, 255, 255, 0.4);
+  }
 }
 
 /* ============================================================
@@ -36,15 +84,20 @@ body {
     Roboto,
     sans-serif;
   background-color: var(--color-background);
-  /* Premium dark glowing aura for glass to blur over */
-  background-image: 
-    radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.04) 0%, transparent 40%),
-    radial-gradient(circle at 100% 100%, rgba(255, 255, 255, 0.03) 0%, transparent 40%),
-    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.01) 0%, transparent 60%);
+  /* Premium dark glowing aura for glass to blur over (dark mode only) */
+  background-image: none;
   background-attachment: fixed;
   color: var(--color-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 300ms ease, color 300ms ease;
+}
+
+.dark body {
+  background-image: 
+    radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.04) 0%, transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(255, 255, 255, 0.03) 0%, transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.01) 0%, transparent 60%);
 }
 
 /* Prevent text selection on interactive UI */
@@ -80,24 +133,40 @@ button,
    ============================================================ */
 
 .glass {
-  background: rgba(20, 20, 20, 0.45);
+  background: rgba(255, 255, 255, 0.65);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.dark .glass {
+  background: rgba(20, 20, 20, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .glass-strong {
-  background: rgba(10, 10, 10, 0.65);
+  background: rgba(245, 245, 245, 0.85);
   -webkit-backdrop-filter: blur(28px);
   backdrop-filter: blur(28px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.dark .glass-strong {
+  background: rgba(10, 10, 10, 0.65);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .glass-surface {
-  background: rgba(26, 26, 26, 0.3);
+  background: rgba(255, 255, 255, 0.5);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.dark .glass-surface {
+  background: rgba(26, 26, 26, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
