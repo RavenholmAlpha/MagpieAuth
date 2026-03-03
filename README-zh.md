@@ -11,7 +11,7 @@
   [![Tauri Shield](https://img.shields.io/badge/Tauri-v2-cyan?logo=tauri)](https://v2.tauri.app/)
   [![Rust](https://img.shields.io/badge/Rust-1.80+-orange?logo=rust)](https://www.rust-lang.org/)
   [![React](https://img.shields.io/badge/React-18-blue?logo=react)](https://react.dev/)
-  [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+  [![License](https://img.shields.io/badge/License-Dual-blue.svg)](LICENSE)
 </div>
 
 <br/>
@@ -124,4 +124,8 @@ MagpieAuth 旨在将完整的数据控制权保留在本地，不依赖云端同
 ---
 
 ## 许可证
-该项目遵循 MIT 许可证发布，详细内容请参考根目录下的 `LICENSE` 文件。
+本项目采用双重授权模式（Dual-License）：
+- **个人 / 非商业使用**：免费获取和修改。
+- **商业使用**：需购买商业授权（闭源），或将您的二次开发/衍生项目遵循 AGPLv3 等开源协议全面开源。
+
+详细条款请参阅根目录下的 [`LICENSE`](LICENSE) 文件。

@@ -1,0 +1,46 @@
+MagpieAuth Dual License Agreement
+(MagpieAuth 双重授权协议)
+
+Copyright (c) 2026 MagpieAuth Contributors
+
+本软件（MagpieAuth）采用双重授权模式（Dual-Licensing），具体条款如下：
+
+1. 个人与非商业使用（免费）
+任何人均可免费获取、使用、研究和修改本软件及其源代码，前提是仅用于个人学习、研究或非营利的非商业用途。
+
+2. 商业使用
+将本软件用于商业目的（包括但不限于：企业内部商业运营、集成到商业产品中、提供商业化的SaaS服务、定制开发等），必须选择以下两种授权方式之一进行合规使用：
+
+  选项 A：开源授权（免费使用）
+  如果您希望免费将本软件用于商业目的，您必须将您的二次开发代码、包含本软件的完整衍生项目或通过网络提供的相关服务代码，基于 GNU Affero General Public License v3.0 (AGPL-3.0) 或更严格的开源协议向公众完整开源。
+
+  选项 B：商业授权（付费使用）
+  如果您希望将本软件用于商业目的，但不能或不愿意将您的二次开发代码或衍生项目开源（即希望保持闭源），您必须在进行商业使用前联系原作者购买商业许可授权（Commercial License）。
+  获得商业许可后，您将不再受上述开源义务的限制，可按照商业许可协议的规定合规地进行闭源商业化开发和发布。
+
+免责声明：
+本软件按“原样”提供，不包含任何明示或暗示的担保，包括但不限于针对特定用途的适用性和非侵权性的担保。在任何情况下，作者或版权持有人不对因使用本软件而产生的任何索赔、损害或其他责任负责。
+
+--------------------------------------------------------------------------------
+
+MagpieAuth Dual License Agreement
+
+Copyright (c) 2026 MagpieAuth Contributors
+
+This software (MagpieAuth) is dual-licensed under the following terms:
+
+1. Personal and Non-Commercial Use (Free)
+Anyone may freely obtain, use, study, and modify this software and its source code, provided it is solely for personal, research, or non-profit, non-commercial purposes.
+
+2. Commercial Use
+Using this software for commercial purposes (including but not limited to: internal corporate operations, integration into commercial products, providing commercial SaaS services, custom development, etc.) requires choosing one of the following two licensing options:
+
+  Option A: Open Source License (Free to use)
+  If you wish to use this software for commercial purposes free of charge, you MUST open-source your secondary development code, the complete derivative project containing this software, or the related service code provided over a network, under the GNU Affero General Public License v3.0 (AGPL-3.0) or a stricter open-source license.
+
+  Option B: Commercial License (Paid)
+  If you wish to use this software for commercial purposes but cannot or do not want to open-source your secondary development code or derivative projects (i.e., you wish to keep it closed-source), you MUST contact the original author to purchase a Commercial License prior to any commercial use.
+  Upon obtaining a commercial license, you will no longer be bound by the aforementioned open-source obligations and may legally conduct closed-source commercial development and distribution according to the terms of the commercial license agreement.
+
+DISCLAIMER:
+THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

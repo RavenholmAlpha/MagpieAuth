@@ -11,7 +11,7 @@
   [![Tauri Shield](https://img.shields.io/badge/Tauri-v2-cyan?logo=tauri)](https://v2.tauri.app/)
   [![Rust](https://img.shields.io/badge/Rust-1.80+-orange?logo=rust)](https://www.rust-lang.org/)
   [![React](https://img.shields.io/badge/React-18-blue?logo=react)](https://react.dev/)
-  [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+  [![License](https://img.shields.io/badge/License-Dual-blue.svg)](LICENSE)
 </div>
 
 <br/>
@@ -124,4 +124,8 @@ MagpieAuth is designed to keep data locally without relying on cloud synchroniza
 ---
 
 ## License
-This project is licensed under the MIT License - see the `LICENSE` file for details.
+This project uses a dual-license model:
+- **Personal / Non-Commercial Use**: Free.
+- **Commercial Use**: Requires either purchasing a Commercial License (Closed Source) OR releasing your modifications/product under an Open Source license (AGPLv3 or similar).
+
+See the [`LICENSE`](LICENSE) file for full details.
