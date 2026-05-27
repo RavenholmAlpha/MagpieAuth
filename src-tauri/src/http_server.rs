@@ -149,6 +149,18 @@ async fn handle_pattern_auth(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<PatternAuthRequest>,
 ) -> Json<AuthResponse> {
+    // Rate limiting: reject if too many failed attempts
+    if let Err(remaining_secs) = state.session.check_rate_limit() {
+        return Json(AuthResponse {
+            success: false,
+            token: None,
+            error: Some(format!(
+                "Too many failed attempts. Try again in {} seconds.",
+                remaining_secs
+            )),
+        });
+    }
+
     // Retrieve the stored pattern hash
     let stored_hash = match crypto::retrieve_pattern() {
         Ok(Some(hash)) => hash,
@@ -171,6 +183,9 @@ async fn handle_pattern_auth(
     // Verify the pattern (this is CPU-intensive due to Argon2id)
     match crypto::verify_pattern(&payload.pattern, &stored_hash) {
         Ok(true) => {
+            // Reset rate limiter on successful auth
+            state.session.reset_failed_attempts();
+
             // Unlock the vault session
             state.session.unlock();
 
@@ -191,11 +206,16 @@ async fn handle_pattern_auth(
                 }),
             }
         }
-        Ok(false) => Json(AuthResponse {
-            success: false,
-            token: None,
-            error: Some("Invalid pattern".into()),
-        }),
+        Ok(false) => {
+            // Record failed attempt for rate limiting
+            state.session.record_failed_attempt();
+
+            Json(AuthResponse {
+                success: false,
+                token: None,
+                error: Some("Invalid pattern".into()),
+            })
+        }
         Err(e) => Json(AuthResponse {
             success: false,
             token: None,

@@ -2,6 +2,11 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
+/// Maximum consecutive failed pattern attempts before lockout
+const MAX_FAILED_ATTEMPTS: u32 = 5;
+/// Lockout duration after exceeding max failed attempts
+const LOCKOUT_DURATION: Duration = Duration::from_secs(30);
+
 /// Represents an active HTTP bearer token session
 #[derive(Debug, Clone)]
 pub struct HttpSessionInfo {
@@ -9,11 +14,37 @@ pub struct HttpSessionInfo {
     pub ttl: Duration,
 }
 
-#[derive(Default)]
+/// Rate limiter state for pattern auth attempts
+struct RateLimitState {
+    failed_attempts: u32,
+    lockout_until: Option<Instant>,
+}
+
+impl Default for RateLimitState {
+    fn default() -> Self {
+        Self {
+            failed_attempts: 0,
+            lockout_until: None,
+        }
+    }
+}
+
 pub struct SecuritySession {
     unlocked: Mutex<bool>,
     /// Active HTTP bearer token sessions (token -> session info)
     http_sessions: Mutex<HashMap<String, HttpSessionInfo>>,
+    /// Rate limiting for pattern authentication
+    rate_limit: Mutex<RateLimitState>,
+}
+
+impl Default for SecuritySession {
+    fn default() -> Self {
+        Self {
+            unlocked: Mutex::new(false),
+            http_sessions: Mutex::new(HashMap::new()),
+            rate_limit: Mutex::new(RateLimitState::default()),
+        }
+    }
 }
 
 impl SecuritySession {
@@ -86,6 +117,41 @@ impl SecuritySession {
     pub fn cleanup_expired_sessions(&self) {
         if let Ok(mut sessions) = self.http_sessions.lock() {
             sessions.retain(|_, info| info.created_at.elapsed() < info.ttl);
+        }
+    }
+
+    /// Check if pattern auth is currently rate-limited.
+    /// Returns Ok(()) if allowed, Err(remaining_seconds) if locked out.
+    pub fn check_rate_limit(&self) -> Result<(), u64> {
+        let state = match self.rate_limit.lock() {
+            Ok(s) => s,
+            Err(_) => return Ok(()), // fail open on mutex poison
+        };
+        if let Some(until) = state.lockout_until {
+            if Instant::now() < until {
+                let remaining = until.duration_since(Instant::now()).as_secs();
+                return Err(remaining.max(1));
+            }
+        }
+        Ok(())
+    }
+
+    /// Record a failed pattern attempt. If threshold exceeded, engage lockout.
+    pub fn record_failed_attempt(&self) {
+        if let Ok(mut state) = self.rate_limit.lock() {
+            state.failed_attempts += 1;
+            if state.failed_attempts >= MAX_FAILED_ATTEMPTS {
+                state.lockout_until = Some(Instant::now() + LOCKOUT_DURATION);
+                state.failed_attempts = 0; // reset counter for next cycle
+            }
+        }
+    }
+
+    /// Reset failed attempt counter (called on successful auth).
+    pub fn reset_failed_attempts(&self) {
+        if let Ok(mut state) = self.rate_limit.lock() {
+            state.failed_attempts = 0;
+            state.lockout_until = None;
         }
     }
 }
