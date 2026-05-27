@@ -2,6 +2,7 @@ mod auth;
 mod commands;
 pub mod crypto;
 mod db;
+mod security;
 mod totp;
 
 use commands::AppState;
@@ -18,6 +19,7 @@ pub fn run() {
     let state = AppState {
         db: Mutex::new(conn),
         imk,
+        session: security::SecuritySession::default(),
     };
 
     tauri::Builder::default()

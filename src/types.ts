@@ -53,7 +53,7 @@ export interface OtpauthParseResult {
 export interface ItemPayload {
   title: string;
   account: string | null;
-  password: string | null;
-  totpSecret: string | null;
+  password?: string | null;
+  totpSecret?: string | null;
   labelId: string | null;
 }

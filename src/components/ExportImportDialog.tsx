@@ -15,7 +15,6 @@ export function ExportImportDialog({ isOpen, mode, onClose, onComplete }: Export
   const { t } = useTranslation();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [filePath, setFilePath] = useState("");
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

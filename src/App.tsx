@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
+import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lock } from "lucide-react";
 import { LockScreen } from "./components/LockScreen";
@@ -93,8 +95,6 @@ function App() {
     let unlistenFn: (() => void) | undefined;
 
     const setupCloseHandler = async () => {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
-      
       const appWindow = getCurrentWindow();
       const unlisten = await appWindow.onCloseRequested(async (event) => {
         if (closeBehavior === "tray") {
@@ -188,7 +188,6 @@ function App() {
   useEffect(() => {
     let unlistenFn: (() => void) | undefined;
     const setupTrayListener = async () => {
-      const { listen } = await import("@tauri-apps/api/event");
       const unlisten = await listen("tray-lock-request", () => {
         handleLock();
       });

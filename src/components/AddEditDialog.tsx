@@ -26,6 +26,8 @@ export function AddEditDialog({ isOpen, editingItem, labels, onClose, onSaved, o
   const [labelId, setLabelId] = useState<string>("");
   const [password, setPassword] = useState("");
   const [totpSecret, setTotpSecret] = useState("");
+  const [clearPassword, setClearPassword] = useState(false);
+  const [clearTotpSecret, setClearTotpSecret] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showQrScanner, setShowQrScanner] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -45,6 +47,8 @@ export function AddEditDialog({ isOpen, editingItem, labels, onClose, onSaved, o
       }
       setPassword("");
       setTotpSecret("");
+      setClearPassword(false);
+      setClearTotpSecret(false);
       setShowPassword(false);
       setShowQrScanner(false);
       setError(null);
@@ -120,10 +124,25 @@ export function AddEditDialog({ isOpen, editingItem, labels, onClose, onSaved, o
     const payload: ItemPayload = {
       title: title.trim(),
       account: account.trim() || null,
-      password: password || null,
-      totpSecret: totpSecret.trim() || null,
       labelId: labelId || null,
     };
+
+    if (isEditing) {
+      if (password) {
+        payload.password = password;
+      } else if (clearPassword) {
+        payload.password = null;
+      }
+
+      if (totpSecret.trim()) {
+        payload.totpSecret = totpSecret.trim();
+      } else if (clearTotpSecret) {
+        payload.totpSecret = null;
+      }
+    } else {
+      payload.password = password || null;
+      payload.totpSecret = totpSecret.trim() || null;
+    }
 
     try {
       if (isEditing) {
@@ -266,7 +285,10 @@ export function AddEditDialog({ isOpen, editingItem, labels, onClose, onSaved, o
                     <input
                       type={showPassword ? "text" : "password"}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (e.target.value) setClearPassword(false);
+                      }}
                       placeholder={isEditing ? "(leave empty to keep current)" : t("addEdit.passwordPlaceholder")}
                       className="w-full px-4 py-3.5 pr-12 text-[15px] font-mono
                                  glass-surface rounded-xl border-white/5 shadow-inner
@@ -325,6 +347,20 @@ export function AddEditDialog({ isOpen, editingItem, labels, onClose, onSaved, o
                     </p>
                   </div>
                 )}
+                {isEditing && editingItem?.hasPassword && (
+                  <label className="mt-2 flex items-center gap-2 text-[11px] text-muted-dark">
+                    <input
+                      type="checkbox"
+                      checked={clearPassword}
+                      onChange={(e) => {
+                        setClearPassword(e.target.checked);
+                        if (e.target.checked) setPassword("");
+                      }}
+                      className="h-3.5 w-3.5 accent-primary"
+                    />
+                    Clear saved password
+                  </label>
+                )}
               </FieldGroup>
 
               {/* TOTP Secret */}
@@ -333,7 +369,10 @@ export function AddEditDialog({ isOpen, editingItem, labels, onClose, onSaved, o
                   <input
                     type="text"
                     value={totpSecret}
-                    onChange={(e) => handleTotpChange(e.target.value)}
+                    onChange={(e) => {
+                      if (e.target.value) setClearTotpSecret(false);
+                      handleTotpChange(e.target.value);
+                    }}
                     placeholder={isEditing ? "(leave empty to keep current)" : t("addEdit.totpPlaceholder")}
                     className="w-full px-4 py-3.5 pr-12 text-[15px] font-mono
                                glass-surface rounded-xl border-white/5 shadow-inner text-primary 
@@ -356,6 +395,20 @@ export function AddEditDialog({ isOpen, editingItem, labels, onClose, onSaved, o
                 <p className="text-[10px] text-muted-dark mt-1">
                   Enter Base32 secret or paste an otpauth:// URI
                 </p>
+                {isEditing && editingItem?.hasTotp && (
+                  <label className="mt-2 flex items-center gap-2 text-[11px] text-muted-dark">
+                    <input
+                      type="checkbox"
+                      checked={clearTotpSecret}
+                      onChange={(e) => {
+                        setClearTotpSecret(e.target.checked);
+                        if (e.target.checked) setTotpSecret("");
+                      }}
+                      className="h-3.5 w-3.5 accent-primary"
+                    />
+                    Clear saved authenticator secret
+                  </label>
+                )}
               </FieldGroup>
 
               {/* Error */}

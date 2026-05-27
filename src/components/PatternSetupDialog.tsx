@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ShieldCheck, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -19,12 +19,13 @@ export function PatternSetupDialog({ isOpen, onClose, onSetSuccess }: PatternSet
   const [firstPattern, setFirstPattern] = useState<number[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Reset state when opened
-  if (!isOpen && step !== "draw") {
-    setStep("draw");
-    setFirstPattern([]);
-    setErrorMsg(null);
-  }
+  useEffect(() => {
+    if (!isOpen) {
+      setStep("draw");
+      setFirstPattern([]);
+      setErrorMsg(null);
+    }
+  }, [isOpen]);
 
   const handlePatternComplete = async (pattern: number[]) => {
     if (step === "draw") {

@@ -46,7 +46,7 @@ pub fn store_imk(key: &[u8; 32]) -> Result<(), CryptoError> {
 
     #[cfg(windows)]
     {
-        let mut data_in = CRYPT_INTEGER_BLOB {
+        let data_in = CRYPT_INTEGER_BLOB {
             cbData: key.len() as u32,
             pbData: key.as_ptr() as *mut u8,
         };
@@ -58,7 +58,7 @@ pub fn store_imk(key: &[u8; 32]) -> Result<(), CryptoError> {
         // SAFETY: We provide valid pointers to CryptProtectData structure
         let res = unsafe {
             CryptProtectData(
-                &mut data_in,
+                &data_in,
                 None, // No description
                 None, // No entropy
                 None, // No reserved
@@ -86,11 +86,11 @@ pub fn store_imk(key: &[u8; 32]) -> Result<(), CryptoError> {
 
             std::fs::write(&key_path, b64)
                 .map_err(|e| CryptoError::CredentialError(e.to_string()))?;
-            return Ok(());
+            Ok(())
         } else {
-            return Err(CryptoError::CredentialError(
+            Err(CryptoError::CredentialError(
                 "DPAPI Protection Failed".into(),
-            ));
+            ))
         }
     }
 
@@ -99,7 +99,7 @@ pub fn store_imk(key: &[u8; 32]) -> Result<(), CryptoError> {
         use base64::{engine::general_purpose, Engine as _};
         let b64 = general_purpose::STANDARD.encode(key);
         std::fs::write(&key_path, b64).map_err(|e| CryptoError::CredentialError(e.to_string()))?;
-        return Ok(());
+        Ok(())
     }
 }
 
@@ -117,7 +117,7 @@ pub fn retrieve_imk() -> Result<[u8; 32], CryptoError> {
         if let Ok(encrypted_data) = general_purpose::STANDARD.decode(file_data.trim()) {
             #[cfg(windows)]
             {
-                let mut data_in = CRYPT_INTEGER_BLOB {
+                let data_in = CRYPT_INTEGER_BLOB {
                     cbData: encrypted_data.len() as u32,
                     pbData: encrypted_data.as_ptr() as *mut u8,
                 };
@@ -128,7 +128,7 @@ pub fn retrieve_imk() -> Result<[u8; 32], CryptoError> {
 
                 let res = unsafe {
                     CryptUnprotectData(
-                        &mut data_in,
+                        &data_in,
                         None,
                         None,
                         None,
@@ -306,24 +306,13 @@ pub fn decrypt_field(blob: &[u8], imk: &[u8; 32], aad: &[u8]) -> Result<Vec<u8>,
     let nonce = Nonce::from_slice(&blob[..12]);
     let ciphertext = &blob[12..];
 
-    // Try with AAD first
-    let payload_with_aad = aes_gcm::aead::Payload {
+    let payload = aes_gcm::aead::Payload {
         msg: ciphertext,
         aad,
     };
 
-    if let Ok(plaintext) = cipher.decrypt(nonce, payload_with_aad) {
-        return Ok(plaintext);
-    }
-
-    // Fallback: Try without AAD (for backward compatibility)
-    let payload_without_aad = aes_gcm::aead::Payload {
-        msg: ciphertext,
-        aad: b"",
-    };
-
     cipher
-        .decrypt(nonce, payload_without_aad)
+        .decrypt(nonce, payload)
         .map_err(|e| CryptoError::DecryptionFailed(e.to_string()))
 }
 
@@ -468,5 +457,29 @@ mod tests {
         let encrypted = encrypt_field(b"", &imk, b"id").expect("encryption failed");
         let decrypted = decrypt_field(&encrypted, &imk, b"id").expect("decryption failed");
         assert_eq!(decrypted, b"".to_vec());
+    }
+
+    #[test]
+    fn test_no_aad_ciphertext_is_rejected_when_aad_is_required() {
+        let imk = generate_imk();
+        let cipher = Aes256Gcm::new_from_slice(&*imk).unwrap();
+        let nonce_bytes = [7u8; 12];
+        let nonce = Nonce::from_slice(&nonce_bytes);
+        let ciphertext = cipher
+            .encrypt(
+                nonce,
+                aes_gcm::aead::Payload {
+                    msg: b"secret",
+                    aad: b"",
+                },
+            )
+            .unwrap();
+        let mut blob = Vec::with_capacity(12 + ciphertext.len());
+        blob.extend_from_slice(&nonce_bytes);
+        blob.extend_from_slice(&ciphertext);
+
+        let result = decrypt_field(&blob, &imk, b"item-id");
+
+        assert!(result.is_err());
     }
 }

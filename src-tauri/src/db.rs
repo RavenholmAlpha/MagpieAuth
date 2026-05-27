@@ -1,5 +1,9 @@
 use rusqlite::{params, Connection};
-use serde::{Deserialize, Serialize};
+use serde::{
+    de::{Error as DeError, Visitor},
+    Deserialize, Deserializer, Serialize, Serializer,
+};
+use std::fmt;
 use std::path::PathBuf;
 use uuid::Uuid;
 
@@ -50,14 +54,82 @@ pub struct VaultItemBase {
     pub updated_at: i64,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum SecretField {
+    Keep,
+    Clear,
+    Set(String),
+}
+
+impl Default for SecretField {
+    fn default() -> Self {
+        Self::Keep
+    }
+}
+
+impl Serialize for SecretField {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            SecretField::Keep | SecretField::Clear => serializer.serialize_none(),
+            SecretField::Set(value) => serializer.serialize_some(value),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for SecretField {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct SecretFieldVisitor;
+
+        impl<'de> Visitor<'de> for SecretFieldVisitor {
+            type Value = SecretField;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("a string, null, or an omitted field")
+            }
+
+            fn visit_none<E>(self) -> Result<Self::Value, E>
+            where
+                E: DeError,
+            {
+                Ok(SecretField::Clear)
+            }
+
+            fn visit_unit<E>(self) -> Result<Self::Value, E>
+            where
+                E: DeError,
+            {
+                Ok(SecretField::Clear)
+            }
+
+            fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                let value = String::deserialize(deserializer)?;
+                Ok(SecretField::Set(value))
+            }
+        }
+
+        deserializer.deserialize_option(SecretFieldVisitor)
+    }
+}
+
 /// Payload for creating/updating an item from the frontend
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ItemPayload {
     pub title: String,
     pub account: Option<String>,
-    pub password: Option<String>,
-    pub totp_secret: Option<String>,
+    #[serde(default)]
+    pub password: SecretField,
+    #[serde(default)]
+    pub totp_secret: SecretField,
     pub label_id: Option<String>,
 }
 
@@ -158,6 +230,11 @@ pub fn search_items(conn: &Connection, query: &str) -> Result<Vec<VaultItemBase>
     Ok(items)
 }
 
+pub fn has_any_items(conn: &Connection) -> Result<bool, rusqlite::Error> {
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM vault_items", [], |row| row.get(0))?;
+    Ok(count > 0)
+}
+
 /// Insert a new vault item (encrypts sensitive fields with IMK)
 pub fn insert_item(
     conn: &Connection,
@@ -167,20 +244,9 @@ pub fn insert_item(
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp_millis();
 
-    let encrypted_password = match &payload.password {
-        Some(pw) if !pw.is_empty() => Some(
-            crypto::encrypt_field(pw.as_bytes(), imk, id.as_bytes()).map_err(|e| e.to_string())?,
-        ),
-        _ => None,
-    };
-
-    let encrypted_totp_secret = match &payload.totp_secret {
-        Some(secret) if !secret.is_empty() => Some(
-            crypto::encrypt_field(secret.as_bytes(), imk, id.as_bytes())
-                .map_err(|e| e.to_string())?,
-        ),
-        _ => None,
-    };
+    let encrypted_password = encrypt_secret_for_insert(&payload.password, imk, id.as_bytes())?;
+    let encrypted_totp_secret =
+        encrypt_secret_for_insert(&payload.totp_secret, imk, id.as_bytes())?;
 
     conn.execute(
         "INSERT INTO vault_items (id, title, account, encrypted_password, encrypted_totp_secret, label_id, created_at, updated_at)
@@ -191,8 +257,8 @@ pub fn insert_item(
     Ok(id)
 }
 
-/// Update an existing vault item
-/// If password or totp_secret is None/empty in payload, keep existing values
+/// Update an existing vault item.
+/// Omitted secret fields keep existing values. Null clears a stored secret.
 pub fn update_item(
     conn: &Connection,
     id: &str,
@@ -201,62 +267,56 @@ pub fn update_item(
 ) -> Result<(), String> {
     let now = chrono::Utc::now().timestamp_millis();
 
-    // Only update password if a new one is provided
-    let has_new_password = payload.password.as_ref().map_or(false, |p| !p.is_empty());
-    let has_new_totp = payload
-        .totp_secret
-        .as_ref()
-        .map_or(false, |t| !t.is_empty());
+    let (existing_password, existing_totp): (Option<Vec<u8>>, Option<Vec<u8>>) = conn
+        .query_row(
+            "SELECT encrypted_password, encrypted_totp_secret FROM vault_items WHERE id = ?1",
+            params![id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .map_err(|e| e.to_string())?;
 
-    if has_new_password && has_new_totp {
-        let enc_pw = crypto::encrypt_field(
-            payload.password.as_ref().unwrap().as_bytes(),
-            imk,
-            id.as_bytes(),
-        )
-        .map_err(|e| e.to_string())?;
-        let enc_totp = crypto::encrypt_field(
-            payload.totp_secret.as_ref().unwrap().as_bytes(),
-            imk,
-            id.as_bytes(),
-        )
-        .map_err(|e| e.to_string())?;
-        conn.execute(
-            "UPDATE vault_items SET title = ?1, account = ?2, encrypted_password = ?3, encrypted_totp_secret = ?4, label_id = ?5, updated_at = ?6 WHERE id = ?7",
-            params![payload.title, payload.account, enc_pw, enc_totp, payload.label_id, now, id],
-        ).map_err(|e| e.to_string())?;
-    } else if has_new_password {
-        let enc_pw = crypto::encrypt_field(
-            payload.password.as_ref().unwrap().as_bytes(),
-            imk,
-            id.as_bytes(),
-        )
-        .map_err(|e| e.to_string())?;
-        conn.execute(
-            "UPDATE vault_items SET title = ?1, account = ?2, encrypted_password = ?3, label_id = ?4, updated_at = ?5 WHERE id = ?6",
-            params![payload.title, payload.account, enc_pw, payload.label_id, now, id],
-        ).map_err(|e| e.to_string())?;
-    } else if has_new_totp {
-        let enc_totp = crypto::encrypt_field(
-            payload.totp_secret.as_ref().unwrap().as_bytes(),
-            imk,
-            id.as_bytes(),
-        )
-        .map_err(|e| e.to_string())?;
-        conn.execute(
-            "UPDATE vault_items SET title = ?1, account = ?2, encrypted_totp_secret = ?3, label_id = ?4, updated_at = ?5 WHERE id = ?6",
-            params![payload.title, payload.account, enc_totp, payload.label_id, now, id],
-        ).map_err(|e| e.to_string())?;
-    } else {
-        // Only update title, account, label, and timestamp — keep encrypted fields
-        conn.execute(
-            "UPDATE vault_items SET title = ?1, account = ?2, label_id = ?3, updated_at = ?4 WHERE id = ?5",
-            params![payload.title, payload.account, payload.label_id, now, id],
-        )
-        .map_err(|e| e.to_string())?;
-    }
+    let encrypted_password =
+        resolve_secret_update(&payload.password, existing_password, imk, id.as_bytes())?;
+    let encrypted_totp_secret =
+        resolve_secret_update(&payload.totp_secret, existing_totp, imk, id.as_bytes())?;
+
+    conn.execute(
+        "UPDATE vault_items SET title = ?1, account = ?2, encrypted_password = ?3, encrypted_totp_secret = ?4, label_id = ?5, updated_at = ?6 WHERE id = ?7",
+        params![payload.title, payload.account, encrypted_password, encrypted_totp_secret, payload.label_id, now, id],
+    ).map_err(|e| e.to_string())?;
 
     Ok(())
+}
+
+fn encrypt_secret_for_insert(
+    secret: &SecretField,
+    imk: &[u8; 32],
+    aad: &[u8],
+) -> Result<Option<Vec<u8>>, String> {
+    match secret {
+        SecretField::Set(value) if !value.is_empty() => {
+            crypto::encrypt_field(value.as_bytes(), imk, aad)
+                .map(Some)
+                .map_err(|e| e.to_string())
+        }
+        SecretField::Keep | SecretField::Clear | SecretField::Set(_) => Ok(None),
+    }
+}
+
+fn resolve_secret_update(
+    secret: &SecretField,
+    existing: Option<Vec<u8>>,
+    imk: &[u8; 32],
+    aad: &[u8],
+) -> Result<Option<Vec<u8>>, String> {
+    match secret {
+        SecretField::Keep => Ok(existing),
+        SecretField::Clear => Ok(None),
+        SecretField::Set(value) if value.is_empty() => Ok(None),
+        SecretField::Set(value) => crypto::encrypt_field(value.as_bytes(), imk, aad)
+            .map(Some)
+            .map_err(|e| e.to_string()),
+    }
 }
 
 /// Delete a vault item by ID
@@ -372,4 +432,103 @@ pub fn delete_label(conn: &Connection, id: &str) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn test_conn() -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE vault_items (
+                id                    TEXT PRIMARY KEY NOT NULL,
+                title                 TEXT NOT NULL,
+                account               TEXT,
+                encrypted_password    BLOB,
+                encrypted_totp_secret BLOB,
+                created_at            INTEGER NOT NULL,
+                updated_at            INTEGER NOT NULL,
+                label_id              TEXT
+            );
+            CREATE TABLE labels (
+                id         TEXT PRIMARY KEY NOT NULL,
+                name       TEXT NOT NULL,
+                color      TEXT NOT NULL,
+                created_at INTEGER NOT NULL
+            );",
+        )
+        .unwrap();
+        conn
+    }
+    #[test]
+    fn update_item_keeps_secret_fields_when_payload_omits_them() {
+        let conn = test_conn();
+        let imk = *generate_test_key();
+        let item_id = insert_item(
+            &conn,
+            &serde_json::from_value(json!({
+                "title": "GitHub",
+                "account": "alice",
+                "password": "old-password",
+                "totpSecret": "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP",
+                "labelId": null
+            }))
+            .unwrap(),
+            &imk,
+        )
+        .unwrap();
+
+        let payload: ItemPayload = serde_json::from_value(json!({
+            "title": "GitHub Updated",
+            "account": "alice",
+            "labelId": null
+        }))
+        .unwrap();
+        update_item(&conn, &item_id, &payload, &imk).unwrap();
+
+        assert!(get_encrypted_password(&conn, &item_id).unwrap().is_some());
+        assert!(get_encrypted_totp_secret(&conn, &item_id)
+            .unwrap()
+            .is_some());
+    }
+
+    #[test]
+    fn update_item_clears_secret_fields_when_payload_sets_null() {
+        let conn = test_conn();
+        let imk = *generate_test_key();
+        let item_id = insert_item(
+            &conn,
+            &serde_json::from_value(json!({
+                "title": "GitHub",
+                "account": "alice",
+                "password": "old-password",
+                "totpSecret": "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP",
+                "labelId": null
+            }))
+            .unwrap(),
+            &imk,
+        )
+        .unwrap();
+
+        let payload: ItemPayload = serde_json::from_value(json!({
+            "title": "GitHub",
+            "account": "alice",
+            "password": null,
+            "totpSecret": null,
+            "labelId": null
+        }))
+        .unwrap();
+        update_item(&conn, &item_id, &payload, &imk).unwrap();
+
+        assert!(get_encrypted_password(&conn, &item_id).unwrap().is_none());
+        assert!(get_encrypted_totp_secret(&conn, &item_id)
+            .unwrap()
+            .is_none());
+    }
+
+    fn generate_test_key() -> zeroize::Zeroizing<[u8; 32]> {
+        crate::crypto::generate_imk()
+    }
 }

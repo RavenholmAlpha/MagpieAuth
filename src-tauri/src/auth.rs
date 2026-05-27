@@ -1,12 +1,7 @@
-/// System authentication module
-///
-/// In production, this integrates with Windows Hello / UserConsentVerifier
-/// to provide PIN/biometric authentication before revealing sensitive data.
-///
-/// Current implementation: development stub that always succeeds.
-/// TODO: Integrate with Windows Hello via `windows-rs` crate:
-///   - Windows.Security.Credentials.UI.UserConsentVerifier
-///   - RequestVerificationAsync("MagpieAuth requires your identity")
+//! System authentication module.
+//!
+//! In production, this integrates with Windows Hello / UserConsentVerifier
+//! to provide PIN/biometric authentication before revealing sensitive data.
 
 #[cfg(windows)]
 use windows::core::HSTRING;
@@ -23,8 +18,6 @@ use windows::Win32::System::WinRT::IUserConsentVerifierInterop;
 pub async fn verify_user(window: tauri::Window) -> Result<bool, String> {
     #[cfg(windows)]
     {
-        use windows::core::Interface;
-
         let msg = HSTRING::from("MagpieAuth requires your identity to unlock the secure vault.");
         let hwnd_raw = window
             .hwnd()

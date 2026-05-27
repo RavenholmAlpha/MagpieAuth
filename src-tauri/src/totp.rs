@@ -40,8 +40,7 @@ fn generate_totp_internal(secret_str: &str) -> Result<(String, i64, u64), String
 
     // If it's a full URI (e.g. from QR scan saved in DB), extract the custom parameters!
     // We parse manually because totp_rs::TOTP::from_url strictly rejects standard 80-bit length secrets.
-    if secret_str.starts_with("otpauth://totp/") {
-        let without_scheme = &secret_str["otpauth://totp/".len()..];
+    if let Some(without_scheme) = secret_str.strip_prefix("otpauth://totp/") {
         let query_part = if let Some(idx) = without_scheme.find('?') {
             &without_scheme[idx + 1..]
         } else {
@@ -64,9 +63,10 @@ fn generate_totp_internal(secret_str: &str) -> Result<(String, i64, u64), String
                     }
                     "algorithm" => {
                         algorithm = match v.to_uppercase().as_str() {
+                            "SHA1" => Algorithm::SHA1,
                             "SHA256" => Algorithm::SHA256,
                             "SHA512" => Algorithm::SHA512,
-                            _ => Algorithm::SHA1,
+                            _ => return Err("Unsupported TOTP algorithm".into()),
                         };
                     }
                     _ => {}
@@ -74,6 +74,8 @@ fn generate_totp_internal(secret_str: &str) -> Result<(String, i64, u64), String
             }
         }
     }
+
+    validate_totp_params(digits, step)?;
 
     // Remove padding to ensure base32 crate decodes it properly
     let unpadded = raw_secret.trim_end_matches('=');
@@ -105,14 +107,25 @@ fn generate_totp_internal(secret_str: &str) -> Result<(String, i64, u64), String
     Ok((code, valid_until, step))
 }
 
+fn validate_totp_params(digits: usize, step: u64) -> Result<(), String> {
+    if !matches!(digits, 6 | 8) {
+        return Err("Unsupported TOTP digits; expected 6 or 8".into());
+    }
+
+    if !(1..=300).contains(&step) {
+        return Err("Unsupported TOTP period; expected 1..=300 seconds".into());
+    }
+
+    Ok(())
+}
+
 /// Parse an otpauth:// URI and extract the secret, issuer, and account
 pub fn parse_otpauth_uri(uri: &str) -> Result<(String, Option<String>, Option<String>), String> {
     // Manually parse to avoid TOTP::from_url which enforces 128-bit secret length
-    if !uri.starts_with("otpauth://totp/") {
+    let Some(without_scheme) = uri.strip_prefix("otpauth://totp/") else {
         return Err("Only otpauth://totp/ URIs are supported".into());
-    }
+    };
 
-    let without_scheme = &uri["otpauth://totp/".len()..];
     let (path_part, query_part) = if let Some(idx) = without_scheme.find('?') {
         (&without_scheme[..idx], &without_scheme[idx + 1..])
     } else {
@@ -135,6 +148,8 @@ pub fn parse_otpauth_uri(uri: &str) -> Result<(String, Option<String>, Option<St
     // Parse query params
     let mut secret = None;
     let mut issuer_from_query = None;
+    let mut digits = 6usize;
+    let mut step = 30u64;
 
     for param in query_part.split('&') {
         if let Some((k, v)) = param.split_once('=') {
@@ -143,9 +158,24 @@ pub fn parse_otpauth_uri(uri: &str) -> Result<(String, Option<String>, Option<St
                 secret = Some(val_decoded.replace("%3D", "=")); // In case of padding
             } else if k == "issuer" {
                 issuer_from_query = Some(val_decoded);
+            } else if k == "digits" {
+                digits = v
+                    .parse::<usize>()
+                    .map_err(|_| "Invalid TOTP digits".to_string())?;
+            } else if k == "period" {
+                step = v
+                    .parse::<u64>()
+                    .map_err(|_| "Invalid TOTP period".to_string())?;
+            } else if k == "algorithm" {
+                match v.to_uppercase().as_str() {
+                    "SHA1" | "SHA256" | "SHA512" => {}
+                    _ => return Err("Unsupported TOTP algorithm".into()),
+                }
             }
         }
     }
+
+    validate_totp_params(digits, step)?;
 
     let secret = secret.ok_or_else(|| "Missing secret parameter in URI".to_string())?;
     // Strip padding and ensure uppercase base32
@@ -187,5 +217,25 @@ mod tests {
         assert!(res.success);
         assert!(res.code.is_some());
         assert_eq!(res.code.unwrap().len(), 6);
+    }
+
+    #[test]
+    fn test_generate_totp_rejects_zero_period_without_panicking() {
+        let res = generate_totp_code(
+            "otpauth://totp/Example:alice?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&period=0",
+        );
+
+        assert!(!res.success);
+        assert!(res.error.unwrap_or_default().contains("period"));
+    }
+
+    #[test]
+    fn test_generate_totp_rejects_unsupported_digits() {
+        let res = generate_totp_code(
+            "otpauth://totp/Example:alice?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&digits=10",
+        );
+
+        assert!(!res.success);
+        assert!(res.error.unwrap_or_default().contains("digits"));
     }
 }

@@ -81,18 +81,39 @@ export function generatePassword(length: number = 20): string {
   const digits = "0123456789";
   const symbols = "!@#$%^&*()_+-=[]{}|;:,.<>?";
   const all = upper + lower + digits + symbols;
+  const passwordLength = Math.max(4, Math.floor(length));
+
+  const randomInt = (maxExclusive: number): number => {
+    if (maxExclusive <= 0 || maxExclusive > 0x100000000) {
+      throw new RangeError("Invalid random range");
+    }
+
+    const random = new Uint32Array(1);
+    const limit = 0x100000000 - (0x100000000 % maxExclusive);
+    do {
+      crypto.getRandomValues(random);
+    } while (random[0] >= limit);
+    return random[0] % maxExclusive;
+  };
+
+  const pick = (chars: string): string => chars[randomInt(chars.length)];
 
   let password = "";
   // Ensure at least one of each category
-  password += upper[Math.floor(Math.random() * upper.length)];
-  password += lower[Math.floor(Math.random() * lower.length)];
-  password += digits[Math.floor(Math.random() * digits.length)];
-  password += symbols[Math.floor(Math.random() * symbols.length)];
+  password += pick(upper);
+  password += pick(lower);
+  password += pick(digits);
+  password += pick(symbols);
 
-  for (let i = 4; i < length; i++) {
-    password += all[Math.floor(Math.random() * all.length)];
+  for (let i = 4; i < passwordLength; i++) {
+    password += pick(all);
   }
 
-  // Shuffle
-  return password.split("").sort(() => Math.random() - 0.5).join("");
+  const chars = password.split("");
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = randomInt(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+
+  return chars.join("");
 }

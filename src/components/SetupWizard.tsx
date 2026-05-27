@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Fingerprint, Grid, ShieldCheck, ArrowRight, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { checkSystemAuthAvailable } from "../lib/tauri-api";
+import { checkSystemAuthAvailable, verifySystemAuth } from "../lib/tauri-api";
 import { useTheme } from "../hooks/useTheme";
 import { PatternSetupDialog } from "./PatternSetupDialog";
 import type { AuthMethod } from "../App";
@@ -16,6 +16,8 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
   const { actualTheme } = useTheme();
   const [systemAuthAvailable, setSystemAuthAvailable] = useState<boolean | null>(null);
   const [showPatternSetup, setShowPatternSetup] = useState(false);
+  const [systemVerifying, setSystemVerifying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     checkSystemAuthAvailable()
@@ -23,9 +25,21 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
       .catch(() => setSystemAuthAvailable(false));
   }, []);
 
-  const handleSystemSelect = () => {
-    if (systemAuthAvailable) {
-      onComplete("system");
+  const handleSystemSelect = async () => {
+    if (systemAuthAvailable && !systemVerifying) {
+      setSystemVerifying(true);
+      setError(null);
+      try {
+        if (await verifySystemAuth()) {
+          onComplete("system");
+        } else {
+          setError("Authentication denied");
+        }
+      } catch {
+        setError("Authentication failed");
+      } finally {
+        setSystemVerifying(false);
+      }
     }
   };
 
@@ -87,7 +101,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
             {/* System Auth Option */}
             <button
               onClick={handleSystemSelect}
-              disabled={systemAuthAvailable === false}
+              disabled={systemAuthAvailable === false || systemVerifying}
               className={`w-full flex items-start gap-4 p-5 rounded-2xl border text-left transition-all duration-300
                 ${
                   systemAuthAvailable === false
@@ -113,7 +127,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                   )}
                 </h3>
                 <p className="text-xs text-muted-dark leading-relaxed">
-                  Use Windows Hello, PIN, or Biometrics. Recommended for max convenience.
+                  {systemVerifying ? "Waiting for system authentication..." : "Use Windows Hello, PIN, or Biometrics. Recommended for max convenience."}
                 </p>
               </div>
             </button>
@@ -131,11 +145,17 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
                   Pattern Lock
                 </h3>
                 <p className="text-xs text-muted-dark leading-relaxed">
-                  Draw a secure 3x3 pattern. Works across all devices independently.
+                  Draw a secure 4x4 pattern. Works across all devices independently.
                 </p>
               </div>
             </button>
           </motion.div>
+
+          {error && (
+            <p className="mt-4 text-xs text-danger-text">
+              {error}
+            </p>
+          )}
 
           {/* Footer Security Note */}
           <motion.div

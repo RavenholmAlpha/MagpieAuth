@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from "react";
-import { getRemainingSeconds } from "../lib/tauri-api";
 
 interface TotpDisplayProps {
   itemId: string;
@@ -17,11 +16,6 @@ export function TotpDisplay({ itemId, getTotpCode }: TotpDisplayProps) {
       const result = await getTotpCode(itemId);
       if (result.success && result.code) {
         setIsTransitioning(true);
-        setTimeout(() => {
-          setCode(result.code!);
-          setIsTransitioning(false);
-        }, 150);
-
         setTimeout(() => {
           setCode(result.code!);
           setIsTransitioning(false);
@@ -64,11 +58,6 @@ export function TotpDisplay({ itemId, getTotpCode }: TotpDisplayProps) {
   const progress = remainingSeconds / period;
   const circumference = 2 * Math.PI * 34; // r=34
   const dashoffset = circumference * (1 - progress);
-
-  const formatCode = (c: string) => {
-    if (c.length === 6) return `${c.slice(0, 3)} ${c.slice(3)}`;
-    return c;
-  };
 
   return (
     <div className="flex flex-col items-center gap-5 py-4">
