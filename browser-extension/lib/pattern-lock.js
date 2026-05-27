@@ -36,17 +36,8 @@ class PatternLock {
     this.errorState = false;
     this.disabled = false;
 
-    // Colors
-    this.colors = {
-      dotIdle: 'rgba(255, 255, 255, 0.25)',
-      dotIdleBorder: 'rgba(255, 255, 255, 0.35)',
-      dotActive: '#a78bfa',
-      dotActiveGlow: 'rgba(167, 139, 250, 0.5)',
-      dotError: '#ef4444',
-      dotErrorGlow: 'rgba(239, 68, 68, 0.5)',
-      lineActive: 'rgba(167, 139, 250, 0.7)',
-      lineError: 'rgba(239, 68, 68, 0.6)',
-    };
+    // Colors are resolved dynamically from CSS variables at render time
+    this.colors = null; // populated by _resolveColors()
 
     // Calculate dot positions
     this._calculateDotPositions();
@@ -243,9 +234,38 @@ class PatternLock {
     }
   }
 
+  // ── Dynamic Color Resolution ───────────────────────────────────
+
+  /**
+   * Read CSS custom properties from the document root to adapt
+   * pattern lock colors to the current light/dark theme.
+   */
+  _resolveColors() {
+    const s = getComputedStyle(document.documentElement);
+    const get = (v) => s.getPropertyValue(v).trim();
+
+    // Check if we're in dark mode
+    const isDark = document.documentElement.classList.contains('dark') ||
+      (!document.documentElement.classList.contains('light') &&
+       window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+    this.colors = {
+      dotIdle: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.12)',
+      dotIdleBorder: isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.2)',
+      dotActive: get('--prim') || (isDark ? '#f4f4f5' : '#0f0f11'),
+      dotActiveGlow: isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.15)',
+      dotError: get('--dang-t') || '#ef4444',
+      dotErrorGlow: isDark ? 'rgba(252, 165, 165, 0.35)' : 'rgba(185, 28, 28, 0.25)',
+      lineActive: isDark ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.3)',
+      lineError: isDark ? 'rgba(252, 165, 165, 0.5)' : 'rgba(185, 28, 28, 0.4)',
+    };
+  }
+
   // ── Rendering ─────────────────────────────────────────────────
 
   _render() {
+    // Re-resolve colors every render to respond to theme changes
+    this._resolveColors();
     const ctx = this.ctx;
     const w = this.canvas.width;
     const h = this.canvas.height;

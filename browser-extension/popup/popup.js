@@ -26,6 +26,7 @@ const views = {
 const els = {
   btnLaunch: document.getElementById('btn-launch'),
   btnRetry: document.getElementById('btn-retry'),
+  btnThemeToggle: document.getElementById('btn-theme-toggle'),
   patternCanvas: document.getElementById('pattern-canvas'),
   patternError: document.getElementById('pattern-error'),
   searchInput: document.getElementById('search-input'),
@@ -725,6 +726,67 @@ window.addEventListener('beforeunload', () => {
   Object.values(passwordRevealTimers).forEach(clearTimeout);
 });
 
+// ── Theme Management ────────────────────────────────────────────────
+
+/**
+ * Theme modes: 'system' (follow OS), 'light', 'dark'
+ * Cycle: system → dark → light → system
+ */
+let currentThemeMode = 'system';
+
+/**
+ * Apply the theme to the document root.
+ */
+function applyTheme(mode) {
+  const root = document.documentElement;
+  root.classList.remove('light', 'dark');
+
+  if (mode === 'dark') {
+    root.classList.add('dark');
+  } else if (mode === 'light') {
+    root.classList.add('light');
+  }
+  // 'system' — no class added, CSS media query takes over
+}
+
+/**
+ * Initialize theme from storage or default to 'system'.
+ */
+async function initTheme() {
+  try {
+    const result = await chrome.storage.local.get('themeMode');
+    currentThemeMode = result.themeMode || 'system';
+  } catch (e) {
+    currentThemeMode = 'system';
+  }
+  applyTheme(currentThemeMode);
+}
+
+/**
+ * Toggle theme: system → dark → light → system
+ */
+async function toggleTheme() {
+  if (currentThemeMode === 'system') {
+    currentThemeMode = 'dark';
+  } else if (currentThemeMode === 'dark') {
+    currentThemeMode = 'light';
+  } else {
+    currentThemeMode = 'system';
+  }
+  applyTheme(currentThemeMode);
+  try {
+    await chrome.storage.local.set({ themeMode: currentThemeMode });
+  } catch (e) {}
+}
+
+if (els.btnThemeToggle) {
+  els.btnThemeToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleTheme();
+  });
+}
+
 // ── Initialize ──────────────────────────────────────────────────────
+initTheme();
 checkStatus();
 startStatusPolling();
