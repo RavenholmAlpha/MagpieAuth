@@ -425,7 +425,7 @@ async function revealPassword(itemId, container) {
   try {
     display.textContent = '...';
     const result = await magpieAPI.getPassword(itemId);
-    const password = result.password || '';
+    const password = result.plaintext || '';
 
     display.textContent = password;
     display.classList.remove('password-dots');
@@ -452,7 +452,7 @@ async function revealPassword(itemId, container) {
 async function copyPassword(itemId, btn) {
   try {
     const result = await magpieAPI.getPassword(itemId);
-    await copyToClipboard(result.password || '', btn);
+    await copyToClipboard(result.plaintext || '', btn);
   } catch (err) {
     showToast('Failed to copy password');
   }
