@@ -11,12 +11,13 @@
   [![Tauri Shield](https://img.shields.io/badge/Tauri-v2-cyan?logo=tauri)](https://v2.tauri.app/)
   [![Rust](https://img.shields.io/badge/Rust-1.80+-orange?logo=rust)](https://www.rust-lang.org/)
   [![React](https://img.shields.io/badge/React-18-blue?logo=react)](https://react.dev/)
+  [![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-green?logo=googlechrome)](browser-extension/)
   [![License](https://img.shields.io/badge/License-Dual-blue.svg)](LICENSE)
 </div>
 
 <br/>
 
-MagpieAuth is an offline, air-gapped vault application built for Windows. It provides a local storage environment for securing accounts, passwords, and Time-based One-Time Passwords (TOTP) without relying on cloud synchronization.
+MagpieAuth is an offline, air-gapped vault application built for Windows. It provides a local storage environment for securing accounts, passwords, and Time-based One-Time Passwords (TOTP) without relying on cloud synchronization. It ships with a companion **Chrome browser extension** for quick access to your vault directly from the browser.
 
 ---
 
@@ -26,12 +27,21 @@ MagpieAuth is an offline, air-gapped vault application built for Windows. It pro
 - **Offline Storage**: MagpieAuth does not connect to the cloud. All data stays strictly on the local machine.
 - **AES-256-GCM Encryption**: Passwords and TOTP secrets are encrypted at rest in a local SQLite database (`vault.db`).
 - **DPAPI Integration**: The Internal Master Key (IMK) used to decrypt the vault is protected utilizing the native Windows Data Protection API (`CryptProtectData`). This binds the encryption directly to the active Windows user session.
-- **System Authentication**: MagpieAuth uses native Windows Hello (PIN or biometrics) to verify identity before granting access, with a custom Pattern Lock fallback for systems without Windows Hello configured.
+- **Dual Authentication**: Supports both Windows Hello (PIN/Biometrics) and Pattern Lock simultaneously — use whichever is more convenient.
 
 ### Authenticator (OTP)
 - Supports importing standard `otpauth://` URIs natively.
 - Synchronous real-time TOTP generation (6-digit format).
 - Visual progress indicators showing exactly how many seconds remain before the current code expires.
+
+### 🌐 Chrome Browser Extension
+- **Quick Access**: View and copy TOTP codes directly from the browser popup.
+- **One-Click Copy**: Copy account, password, or TOTP code to clipboard instantly.
+- **Pattern Lock**: Authenticate using the same pattern lock as the desktop app.
+- **Search & Filter**: Find vault items quickly with real-time search.
+- **TOTP Countdown**: Live arc progress bar showing remaining validity time.
+- **Auto-Detection**: Automatically detects whether the desktop app is running.
+- **Glassmorphism UI**: Matches the desktop app's dark glass aesthetic.
 
 ### User Interface
 - Hardware-accelerated transitions via Framer Motion.
@@ -48,11 +58,13 @@ MagpieAuth is an offline, air-gapped vault application built for Windows. It pro
 
 ## Technology Stack
 
-- **Frontend Core**: React 18, TypeScript, Vite
-- **Frontend Styling**: Tailwind CSS, Framer Motion
-- **Backend**: Tauri v2, Rust
-- **Database**: SQLite (via `rusqlite`)
-- **Cryptography**: `aes-gcm`, `rand`, `windows-rs` (DPAPI bindings), `totp-rs`
+| Layer | Technologies |
+|-------|-------------|
+| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, Framer Motion |
+| **Backend** | Tauri v2, Rust, Axum (embedded HTTP server) |
+| **Database** | SQLite (via `rusqlite`) |
+| **Cryptography** | `aes-gcm`, `rand`, `windows-rs` (DPAPI), `totp-rs` |
+| **Browser Extension** | Chrome Manifest V3, Vanilla JS, Canvas API |
 
 ---
 
@@ -67,8 +79,8 @@ MagpieAuth is an offline, air-gapped vault application built for Windows. It pro
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/magpieauth.git
-   cd magpieauth
+   git clone https://github.com/RavenholmAlpha/MagpieAuth.git
+   cd MagpieAuth
    ```
 
 2. **Install Frontend Dependencies**
@@ -82,11 +94,21 @@ MagpieAuth is an offline, air-gapped vault application built for Windows. It pro
    ```
 
 ### Building for Production
-To compile a release-ready Windows installer (.msi):
+To compile a release-ready Windows installer:
 ```bash
 npm run tauri build
 ```
-The compiled installers will be generated under `src-tauri/target/release/bundle/msi/`.
+The compiled installers will be generated under:
+- `src-tauri/target/release/bundle/nsis/` — NSIS `.exe` installer
+- `src-tauri/target/release/bundle/msi/` — MSI installer
+
+### Installing the Browser Extension
+
+1. Open Chrome and navigate to `chrome://extensions/`
+2. Enable **Developer Mode** (top right toggle)
+3. Click **Load unpacked** and select the `browser-extension/` directory
+4. The MagpieAuth icon will appear in the toolbar
+5. Make sure the desktop app is running before using the extension
 
 ---
 
@@ -94,24 +116,64 @@ The compiled installers will be generated under `src-tauri/target/release/bundle
 
 ```text
 magpieauth/
-├── src/                      # Frontend UI (React + TypeScript)
-│   ├── components/           # UI Components (SetupWizard, PatternLock, VaultList)
-│   ├── hooks/                # Custom React hooks
-│   ├── lib/                  # Utilities (tauri-api.ts frontend bindings)
-│   ├── App.tsx               # Main Application Routing and State Guard
-│   └── index.css             # Tailwind & Glassmorphism variables
-├── src-tauri/                # Backend Core (Rust)
+├── src/                          # Frontend UI (React + TypeScript)
+│   ├── components/               # UI Components (LockScreen, VaultList, etc.)
+│   ├── hooks/                    # Custom React hooks
+│   ├── lib/                      # Utilities (tauri-api.ts frontend bindings)
+│   ├── App.tsx                   # Main Application Routing and State Guard
+│   └── index.css                 # Tailwind & Glassmorphism variables
+├── src-tauri/                    # Backend Core (Rust)
 │   ├── src/
-│   │   ├── auth.rs           # Windows Hello / UserConsentVerifier integration
-│   │   ├── commands.rs       # Tauri Command IPC payload handlers
-│   │   ├── crypto.rs         # AES-GCM and DPAPI native cryptography
-│   │   ├── db.rs             # SQLite schema and queries
-│   │   ├── totp.rs           # TOTP parsing and generation
-│   │   └── lib.rs            # Application Bootstrapper
-│   ├── Cargo.toml            # Rust dependencies
-│   └── tauri.conf.json       # Tauri Application manifest and config
-└── package.json              # NPM dependencies
+│   │   ├── auth.rs               # Windows Hello integration
+│   │   ├── commands.rs           # Tauri Command IPC handlers
+│   │   ├── crypto.rs             # AES-GCM and DPAPI cryptography
+│   │   ├── db.rs                 # SQLite schema and queries
+│   │   ├── http_server.rs        # Embedded Axum HTTP API server
+│   │   ├── http_auth.rs          # Bearer token session management
+│   │   ├── security.rs           # Lock state & HTTP session tokens
+│   │   ├── totp.rs               # TOTP parsing and generation
+│   │   └── lib.rs                # Application Bootstrapper
+│   ├── Cargo.toml                # Rust dependencies
+│   └── tauri.conf.json           # Tauri manifest and config
+├── browser-extension/            # Chrome Browser Extension (Manifest V3)
+│   ├── manifest.json             # Extension configuration
+│   ├── popup/                    # Popup UI (HTML + CSS + JS)
+│   ├── background/               # Service Worker
+│   ├── lib/                      # API client & Pattern Lock component
+│   └── icons/                    # Extension icons
+└── package.json                  # NPM dependencies
 ```
+
+---
+
+## Browser Extension Architecture
+
+The browser extension communicates with the desktop app via a **local HTTP API server** embedded in the Tauri backend.
+
+```
+┌─────────────────────┐          HTTP REST          ┌─────────────────────┐
+│  Chrome Extension   │ ◄──── localhost:19826 ────► │  MagpieAuth Desktop │
+│  (Popup UI)         │                             │  (Axum + Tauri)     │
+└─────────────────────┘                             └─────────────────────┘
+```
+
+**Security measures:**
+- HTTP server listens on `127.0.0.1` only (loopback, no remote access)
+- CORS restricted to `chrome-extension://` origins
+- Bearer token authentication with 10-minute expiry
+- All tokens auto-cleared when the vault is locked
+
+**API Endpoints:**
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET` | `/api/status` | — | Connection & lock status |
+| `POST` | `/api/auth/pattern` | — | Pattern unlock → Bearer token |
+| `GET` | `/api/vault/items` | Bearer | List vault items |
+| `GET` | `/api/vault/search?q=` | Bearer | Search items |
+| `GET` | `/api/vault/items/{id}/password` | Bearer | Get password |
+| `GET` | `/api/vault/items/{id}/totp` | Bearer | Get TOTP code |
+| `GET` | `/api/totp/remaining` | Bearer | TOTP seconds remaining |
 
 ---
 
