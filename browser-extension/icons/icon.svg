@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0a0f"/>
+      <stop offset="100%" style="stop-color:#12121a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a78bfa"/>
+      <stop offset="100%" style="stop-color:#7c5de8"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+  <!-- Shield -->
+  <path d="M64 22 L98 38 L98 62 C98 82 82 98 64 106 C46 98 30 82 30 62 L30 38 Z" 
+        fill="none" stroke="url(#accent)" stroke-width="3" opacity="0.6"/>
+  <!-- Bird silhouette (simplified magpie) -->
+  <g transform="translate(64,60)" fill="url(#accent)">
+    <!-- Body -->
+    <ellipse cx="0" cy="4" rx="16" ry="12"/>
+    <!-- Head -->
+    <circle cx="-12" cy="-10" r="9"/>
+    <!-- Beak -->
+    <polygon points="-21,-12 -28,-10 -21,-8"/>
+    <!-- Eye -->
+    <circle cx="-14" cy="-11" r="2" fill="#0a0a0f"/>
+    <!-- Tail -->
+    <polygon points="14,0 30,-6 28,4 16,8"/>
+    <!-- Wing detail -->
+    <path d="M-4,0 Q8,-8 16,-4 Q8,2 -4,4 Z" fill="rgba(255,255,255,0.15)"/>
+  </g>
+  <!-- Lock keyhole on shield -->
+  <g transform="translate(64,80)">
+    <circle cx="0" cy="-2" r="3" fill="url(#accent)" opacity="0.5"/>
+    <rect x="-1.5" y="0" width="3" height="5" rx="1" fill="url(#accent)" opacity="0.5"/>
+  </g>
+</svg>

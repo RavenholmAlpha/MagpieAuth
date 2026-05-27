@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Fingerprint } from "lucide-react";
+import { Fingerprint, AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { verifySystemAuth, verifyPatternLock } from "../lib/tauri-api";
+import { verifySystemAuth, verifyPatternLock, hasPatternLock, checkSystemAuthAvailable } from "../lib/tauri-api";
 import { useTheme } from "../hooks/useTheme";
 import { PatternLock } from "./PatternLock";
-import type { AuthMethod } from "../App";
 
 interface LockScreenProps {
   onUnlock: () => void;
@@ -17,8 +16,18 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [unlocked, setUnlocked] = useState(false);
-  
-  const authMethod: AuthMethod = (localStorage.getItem("magpie_auth_method") as AuthMethod) || "system";
+
+  const [hasPattern, setHasPattern] = useState(false);
+  const [systemAuthAvailable, setSystemAuthAvailable] = useState(false);
+
+  useEffect(() => {
+    hasPatternLock()
+      .then((result) => setHasPattern(result))
+      .catch(() => setHasPattern(false));
+    checkSystemAuthAvailable()
+      .then((result) => setSystemAuthAvailable(result))
+      .catch(() => setSystemAuthAvailable(false));
+  }, []);
 
   const handleSystemUnlock = async () => {
     if (isVerifying) return;
@@ -62,6 +71,9 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
     }
   };
 
+  const bothAvailable = hasPattern && systemAuthAvailable;
+  const neitherAvailable = !hasPattern && !systemAuthAvailable;
+
   return (
     <AnimatePresence>
       {!unlocked && (
@@ -85,7 +97,7 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.5 }}
-            className="flex flex-col items-center gap-8 relative z-10"
+            className="flex flex-col items-center gap-6 relative z-10"
           >
             {/* Logo */}
             <motion.div
@@ -112,8 +124,9 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
               </p>
             </div>
 
-            {authMethod === "pattern" ? (
-              <div className="bg-surface-sunken rounded-2xl p-4 border border-border-subtle relative mb-2">
+            {/* Pattern Lock (if pattern is set) */}
+            {hasPattern && (
+              <div className="bg-surface-sunken rounded-2xl p-4 border border-border-subtle relative">
                 <PatternLock 
                   onComplete={handlePatternComplete} 
                   error={error} 
@@ -121,7 +134,19 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
                   gridSize={4} 
                 />
               </div>
-            ) : (
+            )}
+
+            {/* Divider (if both available) */}
+            {bothAvailable && (
+              <div className="flex items-center gap-3 w-full px-4">
+                <div className="flex-1 h-px bg-white/10" />
+                <span className="text-xs text-muted-dark font-light">或</span>
+                <div className="flex-1 h-px bg-white/10" />
+              </div>
+            )}
+
+            {/* Windows Hello button (if system auth available) */}
+            {systemAuthAvailable && (
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -135,6 +160,16 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
                 <Fingerprint className="w-5 h-5 opacity-70" strokeWidth={1.5} />
                 {isVerifying ? t("lockScreen.unlocking") : t("lockScreen.unlock")}
               </motion.button>
+            )}
+
+            {/* No auth available error */}
+            {neitherAvailable && (
+              <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-danger-text/10 border border-danger-text/20">
+                <AlertTriangle className="w-4 h-4 text-danger-text" strokeWidth={1.5} />
+                <span className="text-xs text-danger-text">
+                  {t("lockScreen.authFailed")}
+                </span>
+              </div>
             )}
 
             {/* Hint / Error */}
@@ -155,7 +190,7 @@ export function LockScreen({ onUnlock }: LockScreenProps) {
                   exit={{ opacity: 0 }}
                   className="text-muted-dark text-xs mt-2"
                 >
-                  {authMethod === "pattern" ? t("lockScreen.enterPattern") : t("lockScreen.enterPin")}
+                  {hasPattern ? t("lockScreen.enterPattern") : systemAuthAvailable ? t("lockScreen.enterPin") : ""}
                 </motion.p>
               )}
             </AnimatePresence>

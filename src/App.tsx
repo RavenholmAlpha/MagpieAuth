@@ -54,9 +54,7 @@ function App() {
   
   const [labels, setLabels] = useState<Label[]>([]);
 
-  const [authMethod, setAuthMethod] = useState<AuthMethod>(() => {
-    return (localStorage.getItem("magpie_auth_method") as AuthMethod) || "system";
-  });
+
 
   const [globalShortcut, setGlobalShortcut] = useState<string>(() => {
     return localStorage.getItem("magpie_global_shortcut") || "CommandOrControl+Shift+L";
@@ -205,10 +203,9 @@ function App() {
   useEffect(() => {
     localStorage.setItem("magpie_lock_mode", lockMode);
     localStorage.setItem("magpie_lock_timeout", lockTimeoutMs.toString());
-    localStorage.setItem("magpie_auth_method", authMethod);
     localStorage.setItem("magpie_global_shortcut", globalShortcut);
     localStorage.setItem("magpie_close_behavior", closeBehavior);
-  }, [lockMode, lockTimeoutMs, authMethod, globalShortcut, closeBehavior]);
+  }, [lockMode, lockTimeoutMs, globalShortcut, closeBehavior]);
 
   // ======== Handlers ========
   const handleUnlock = () => {
@@ -267,8 +264,7 @@ function App() {
         <AnimatePresence>
           {!isInitialized && (
             <SetupWizard
-              onComplete={(method) => {
-                setAuthMethod(method);
+              onComplete={() => {
                 setIsInitialized(true);
                 localStorage.setItem("magpie_is_initialized", "true");
                 setIsLocked(false);
@@ -322,8 +318,7 @@ function App() {
         onLockModeChange={setLockMode}
         lockTimeoutMs={lockTimeoutMs}
         onLockTimeoutChange={setLockTimeoutMs}
-        authMethod={authMethod}
-        onAuthMethodChange={setAuthMethod}
+
         onOpenPatternSetup={() => { setShowSettings(false); setShowPatternSetup(true); }}
         globalShortcut={globalShortcut}
         onGlobalShortcutChange={setGlobalShortcut}

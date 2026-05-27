@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MagpieAuth Icon Generator</title>
+  <style>
+    body { background: #1a1a2e; color: white; font-family: sans-serif; padding: 20px; }
+    canvas { border: 1px solid #333; margin: 10px; }
+    a { color: #a78bfa; }
+  </style>
+</head>
+<body>
+  <h2>MagpieAuth Icon Generator</h2>
+  <p>Right-click each canvas and "Save image as..." to save the icon PNGs.</p>
+  <div>
+    <h3>128x128</h3>
+    <canvas id="c128" width="128" height="128"></canvas>
+    <h3>48x48</h3>
+    <canvas id="c48" width="48" height="48"></canvas>
+    <h3>16x16</h3>
+    <canvas id="c16" width="16" height="16"></canvas>
+  </div>
+  <script>
+    function drawIcon(canvas) {
+      const ctx = canvas.getContext('2d');
+      const s = canvas.width / 128; // scale factor
+
+      // Background
+      const bgGrad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      bgGrad.addColorStop(0, '#0f0f1a');
+      bgGrad.addColorStop(1, '#1a1a2e');
+      
+      // Rounded rect background
+      const r = 28 * s;
+      ctx.beginPath();
+      ctx.moveTo(r, 0);
+      ctx.lineTo(canvas.width - r, 0);
+      ctx.quadraticCurveTo(canvas.width, 0, canvas.width, r);
+      ctx.lineTo(canvas.width, canvas.height - r);
+      ctx.quadraticCurveTo(canvas.width, canvas.height, canvas.width - r, canvas.height);
+      ctx.lineTo(r, canvas.height);
+      ctx.quadraticCurveTo(0, canvas.height, 0, canvas.height - r);
+      ctx.lineTo(0, r);
+      ctx.quadraticCurveTo(0, 0, r, 0);
+      ctx.closePath();
+      ctx.fillStyle = bgGrad;
+      ctx.fill();
+
+      // Shield outline
+      ctx.save();
+      ctx.scale(s, s);
+      
+      const shieldGrad = ctx.createLinearGradient(30, 22, 98, 106);
+      shieldGrad.addColorStop(0, '#a78bfa');
+      shieldGrad.addColorStop(1, '#7c5de8');
+      
+      ctx.beginPath();
+      ctx.moveTo(64, 22);
+      ctx.lineTo(98, 38);
+      ctx.lineTo(98, 62);
+      ctx.quadraticCurveTo(98, 88, 64, 106);
+      ctx.quadraticCurveTo(30, 88, 30, 62);
+      ctx.lineTo(30, 38);
+      ctx.closePath();
+      ctx.strokeStyle = shieldGrad;
+      ctx.lineWidth = 3;
+      ctx.globalAlpha = 0.5;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      // Bird body
+      const birdGrad = ctx.createLinearGradient(40, 48, 90, 76);
+      birdGrad.addColorStop(0, '#a78bfa');
+      birdGrad.addColorStop(1, '#8b6fec');
+      ctx.fillStyle = birdGrad;
+
+      // Body ellipse
+      ctx.beginPath();
+      ctx.ellipse(64, 64, 16, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Head
+      ctx.beginPath();
+      ctx.arc(52, 50, 9, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Beak
+      ctx.beginPath();
+      ctx.moveTo(43, 48);
+      ctx.lineTo(36, 50);
+      ctx.lineTo(43, 52);
+      ctx.closePath();
+      ctx.fill();
+
+      // Eye
+      ctx.beginPath();
+      ctx.arc(50, 49, 2, 0, Math.PI * 2);
+      ctx.fillStyle = '#0a0a0f';
+      ctx.fill();
+
+      // Tail
+      ctx.fillStyle = birdGrad;
+      ctx.beginPath();
+      ctx.moveTo(78, 60);
+      ctx.lineTo(94, 54);
+      ctx.lineTo(92, 64);
+      ctx.lineTo(80, 68);
+      ctx.closePath();
+      ctx.fill();
+
+      // Wing highlight
+      ctx.beginPath();
+      ctx.moveTo(60, 60);
+      ctx.quadraticCurveTo(72, 52, 80, 56);
+      ctx.quadraticCurveTo(72, 62, 60, 64);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.fill();
+
+      // Lock keyhole
+      ctx.fillStyle = shieldGrad;
+      ctx.globalAlpha = 0.45;
+      ctx.beginPath();
+      ctx.arc(64, 84, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillRect(62.5, 86, 3, 5);
+      ctx.globalAlpha = 1;
+
+      ctx.restore();
+    }
+
+    drawIcon(document.getElementById('c128'));
+    drawIcon(document.getElementById('c48'));
+    drawIcon(document.getElementById('c16'));
+  </script>
+</body>
+</html>

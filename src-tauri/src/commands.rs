@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::State;
 
 use crate::{auth, crypto, db, security, totp};
@@ -24,7 +24,7 @@ pub struct PasswordResponse {
 // ============================================================
 
 #[tauri::command]
-pub fn get_vault_items(state: State<'_, AppState>) -> Result<Vec<db::VaultItemBase>, String> {
+pub fn get_vault_items(state: State<'_, Arc<AppState>>) -> Result<Vec<db::VaultItemBase>, String> {
     state.session.require_unlocked()?;
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     db::get_all_items(&conn).map_err(|e| e.to_string())
@@ -32,7 +32,7 @@ pub fn get_vault_items(state: State<'_, AppState>) -> Result<Vec<db::VaultItemBa
 
 #[tauri::command]
 pub fn search_items(
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
     query: String,
 ) -> Result<Vec<db::VaultItemBase>, String> {
     state.session.require_unlocked()?;
@@ -41,7 +41,7 @@ pub fn search_items(
 }
 
 #[tauri::command]
-pub fn add_item(state: State<'_, AppState>, payload: db::ItemPayload) -> Result<String, String> {
+pub fn add_item(state: State<'_, Arc<AppState>>, payload: db::ItemPayload) -> Result<String, String> {
     state.session.require_unlocked()?;
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     db::insert_item(&conn, &payload, &state.imk)
@@ -49,7 +49,7 @@ pub fn add_item(state: State<'_, AppState>, payload: db::ItemPayload) -> Result<
 
 #[tauri::command]
 pub fn update_item(
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
     id: String,
     payload: db::ItemPayload,
 ) -> Result<(), String> {
@@ -59,7 +59,7 @@ pub fn update_item(
 }
 
 #[tauri::command]
-pub fn delete_item(state: State<'_, AppState>, id: String) -> Result<(), String> {
+pub fn delete_item(state: State<'_, Arc<AppState>>, id: String) -> Result<(), String> {
     state.session.require_unlocked()?;
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     db::delete_item(&conn, &id)
@@ -70,14 +70,14 @@ pub fn delete_item(state: State<'_, AppState>, id: String) -> Result<(), String>
 // ============================================================
 
 #[tauri::command]
-pub fn get_labels(state: State<'_, AppState>) -> Result<Vec<db::Label>, String> {
+pub fn get_labels(state: State<'_, Arc<AppState>>) -> Result<Vec<db::Label>, String> {
     state.session.require_unlocked()?;
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     db::get_all_labels(&conn).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn add_label(state: State<'_, AppState>, payload: db::LabelPayload) -> Result<String, String> {
+pub fn add_label(state: State<'_, Arc<AppState>>, payload: db::LabelPayload) -> Result<String, String> {
     state.session.require_unlocked()?;
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     db::insert_label(&conn, &payload)
@@ -85,7 +85,7 @@ pub fn add_label(state: State<'_, AppState>, payload: db::LabelPayload) -> Resul
 
 #[tauri::command]
 pub fn update_label(
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
     id: String,
     payload: db::LabelPayload,
 ) -> Result<(), String> {
@@ -95,7 +95,7 @@ pub fn update_label(
 }
 
 #[tauri::command]
-pub fn delete_label(state: State<'_, AppState>, id: String) -> Result<(), String> {
+pub fn delete_label(state: State<'_, Arc<AppState>>, id: String) -> Result<(), String> {
     state.session.require_unlocked()?;
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     db::delete_label(&conn, &id)
@@ -106,7 +106,7 @@ pub fn delete_label(state: State<'_, AppState>, id: String) -> Result<(), String
 // ============================================================
 
 #[tauri::command]
-pub fn get_password_plaintext(state: State<'_, AppState>, id: String) -> PasswordResponse {
+pub fn get_password_plaintext(state: State<'_, Arc<AppState>>, id: String) -> PasswordResponse {
     if let Err(e) = state.session.require_unlocked() {
         return PasswordResponse {
             success: false,
@@ -153,7 +153,7 @@ pub fn get_password_plaintext(state: State<'_, AppState>, id: String) -> Passwor
 }
 
 #[tauri::command]
-pub fn get_totp_code(state: State<'_, AppState>, id: String) -> totp::TotpCodeResponse {
+pub fn get_totp_code(state: State<'_, Arc<AppState>>, id: String) -> totp::TotpCodeResponse {
     if let Err(e) = state.session.require_unlocked() {
         return totp::TotpCodeResponse {
             success: false,
@@ -215,7 +215,7 @@ pub fn get_totp_code(state: State<'_, AppState>, id: String) -> totp::TotpCodeRe
 #[tauri::command]
 pub async fn verify_system_auth(
     window: tauri::Window,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
 ) -> Result<bool, String> {
     let verified = auth::verify_user(window).await?;
     if verified {
@@ -230,7 +230,7 @@ pub async fn check_system_auth_available() -> bool {
 }
 
 #[tauri::command]
-pub fn set_pattern_lock(state: State<'_, AppState>, pattern: String) -> Result<(), String> {
+pub fn set_pattern_lock(state: State<'_, Arc<AppState>>, pattern: String) -> Result<(), String> {
     if pattern.is_empty() {
         return Err("Pattern cannot be empty".into());
     }
@@ -254,7 +254,7 @@ pub fn set_pattern_lock(state: State<'_, AppState>, pattern: String) -> Result<(
 }
 
 #[tauri::command]
-pub fn verify_pattern_lock(state: State<'_, AppState>, pattern: String) -> Result<bool, String> {
+pub fn verify_pattern_lock(state: State<'_, Arc<AppState>>, pattern: String) -> Result<bool, String> {
     match crypto::retrieve_pattern() {
         Ok(Some(hash)) => {
             let verified = crypto::verify_pattern(&pattern, &hash).map_err(|e| e.to_string())?;
@@ -340,7 +340,7 @@ struct ExportData {
 #[tauri::command]
 pub async fn export_vault(
     window: tauri::Window,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
     password: String,
     file_path: String,
 ) -> Result<(), String> {
@@ -404,7 +404,7 @@ pub async fn export_vault(
 #[tauri::command]
 pub async fn import_vault(
     window: tauri::Window,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
     file_path: String,
     password: String,
 ) -> Result<u32, String> {
@@ -560,7 +560,7 @@ pub fn register_global_shortcut(app: tauri::AppHandle, shortcut: String) -> Resu
 #[tauri::command]
 pub fn sync_lock_state(
     lock_i: tauri::State<'_, tauri::menu::MenuItem<tauri::Wry>>,
-    state: State<'_, AppState>,
+    state: State<'_, Arc<AppState>>,
     is_locked: bool,
 ) {
     if is_locked {

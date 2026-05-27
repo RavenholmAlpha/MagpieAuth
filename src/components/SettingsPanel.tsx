@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useTheme } from "../hooks/useTheme";
 import { checkSystemAuthAvailable } from "../lib/tauri-api";
 import { AlertCircle } from "lucide-react";
-import type { LockMode, AuthMethod } from "../App";
+import type { LockMode } from "../App";
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -16,8 +16,7 @@ interface SettingsPanelProps {
   onLockModeChange: (mode: LockMode) => void;
   lockTimeoutMs: number;
   onLockTimeoutChange: (ms: number) => void;
-  authMethod: AuthMethod;
-  onAuthMethodChange: (method: AuthMethod) => void;
+
   onOpenPatternSetup: () => void;
   globalShortcut: string;
   onGlobalShortcutChange: (shortcut: string) => void;
@@ -35,8 +34,7 @@ export function SettingsPanel({
   onLockModeChange,
   lockTimeoutMs,
   onLockTimeoutChange,
-  authMethod,
-  onAuthMethodChange,
+
   onOpenPatternSetup,
   globalShortcut,
   onGlobalShortcutChange,
@@ -203,42 +201,12 @@ export function SettingsPanel({
                       <span className="text-xs text-primary/80">{t("settings.authMethod")}</span>
                     </div>
 
-                    <div className="flex bg-surface-sunken p-1 rounded-xl border border-border-subtle mb-2">
-                       <button
-                         onClick={() => onAuthMethodChange("system")}
-                         disabled={systemAuthAvailable === false}
-                         className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all duration-200 
-                           ${authMethod === "system" ? "bg-white/10 text-primary shadow-sm" : "text-muted-dark hover:text-muted"}
-                           ${systemAuthAvailable === false ? "opacity-40 cursor-not-allowed" : ""}`}
-                         title={systemAuthAvailable === false ? "System Authentication is not available on this device" : ""}
-                       >
-                         {t("settings.systemAuth")}
-                         {systemAuthAvailable === false && <AlertCircle className="inline-block w-3 h-3 ml-1 text-danger-text/70" />}
-                       </button>
-                       <button
-                         onClick={() => onAuthMethodChange("pattern")}
-                         className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all duration-200 ${authMethod === "pattern" ? "bg-white/10 text-primary shadow-sm" : "text-muted-dark hover:text-muted"}`}
-                       >
-                         {t("settings.patternAuth")}
-                       </button>
-                    </div>
-                    
-                    <AnimatePresence>
-                      {authMethod === "pattern" && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                        >
-                           <button onClick={onOpenPatternSetup} className="w-full py-2 bg-white/[0.05] hover:bg-white/[0.08] active:bg-white/[0.04] transition-colors border border-white/[0.05] shadow-sm rounded-lg text-xs font-medium text-primary cursor-pointer mb-2">
-                             {t("settings.setPattern")}
-                           </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    <button onClick={onOpenPatternSetup} className="w-full py-2 bg-white/[0.05] hover:bg-white/[0.08] active:bg-white/[0.04] transition-colors border border-white/[0.05] shadow-sm rounded-lg text-xs font-medium text-primary cursor-pointer mb-2">
+                      {t("settings.setPattern")}
+                    </button>
 
                     <p className="text-[10px] text-muted-dark leading-relaxed mb-4">
-                      {authMethod === "system" ? t("settings.systemAuthDesc") : t("settings.patternAuthDesc")}
+                      {t("settings.bothAuthDesc", "Windows Hello is automatically available when supported. Set a pattern lock for additional unlock option and browser extension access.")}
                     </p>
 
                     <div className="h-px w-full bg-white/5 my-3" />
@@ -389,7 +357,7 @@ export function SettingsPanel({
                 <div className="rounded-2xl glass-surface border-white/5 shadow-inner p-5">
                   <div className="flex items-center gap-2 mb-2">
                     <Info className="w-4 h-4 text-muted" strokeWidth={1.5} />
-                    <span className="text-xs text-primary/80">{t("app.title")} v0.1.0</span>
+                    <span className="text-xs text-primary/80">{t("app.title")} v1.3.1</span>
                   </div>
                   <p className="text-[10px] text-muted-dark leading-relaxed">
                     {t("settings.aboutDesc")}
