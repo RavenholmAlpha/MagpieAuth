@@ -4,6 +4,7 @@ use aes_gcm::{
 };
 use argon2::Argon2;
 use rand::RngCore;
+use std::path::Path;
 use zeroize::Zeroizing;
 
 /// Error type for crypto operations
@@ -107,7 +108,9 @@ pub fn store_imk(key: &[u8; 32]) -> Result<(), CryptoError> {
 pub fn retrieve_imk() -> Result<[u8; 32], CryptoError> {
     let app_data =
         dirs::data_dir().ok_or_else(|| CryptoError::CredentialError("No app data dir".into()))?;
-    let key_path = app_data.join("MagpieAuth").join(".imk_dpapi");
+    let magpie_dir = app_data.join("MagpieAuth");
+    let key_path = magpie_dir.join(".imk_dpapi");
+    let vault_path = magpie_dir.join("vault.db");
 
     if key_path.exists() {
         let file_data = std::fs::read_to_string(&key_path)
@@ -179,10 +182,22 @@ pub fn retrieve_imk() -> Result<[u8; 32], CryptoError> {
         }
     }
 
-    // First run or DPAPI key lost: generate and store a new IMK
+    ensure_can_generate_new_imk(&vault_path)?;
+
+    // First run: generate and store a new IMK only when no vault exists yet.
     let imk = generate_imk();
     store_imk(&imk)?;
     Ok(*imk)
+}
+
+fn ensure_can_generate_new_imk(vault_path: &Path) -> Result<(), CryptoError> {
+    if vault_path.exists() {
+        return Err(CryptoError::CredentialError(
+            "Internal Master Key is unavailable while vault database exists; refusing to generate a new key".into(),
+        ));
+    }
+
+    Ok(())
 }
 
 // ============================================================
@@ -481,5 +496,18 @@ mod tests {
         let result = decrypt_field(&blob, &imk, b"item-id");
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn refuses_to_generate_new_imk_when_vault_db_already_exists() {
+        let dir = std::env::temp_dir().join(format!("magpieauth-imk-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let vault_path = dir.join("vault.db");
+        std::fs::write(&vault_path, b"existing vault").unwrap();
+
+        let err = ensure_can_generate_new_imk(&vault_path).unwrap_err();
+
+        assert!(err.to_string().contains("vault database exists"));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -357,7 +357,7 @@ export function SettingsPanel({
                 <div className="rounded-2xl glass-surface border-white/5 shadow-inner p-5">
                   <div className="flex items-center gap-2 mb-2">
                     <Info className="w-4 h-4 text-muted" strokeWidth={1.5} />
-                    <span className="text-xs text-primary/80">{t("app.title")} v1.3.1</span>
+                    <span className="text-xs text-primary/80">{t("app.title")} v1.3.2</span>
                   </div>
                   <p className="text-[10px] text-muted-dark leading-relaxed">
                     {t("settings.aboutDesc")}

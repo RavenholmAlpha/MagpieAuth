@@ -51,7 +51,7 @@ MagpieAuth is an offline, air-gapped vault application built for Windows. It pro
 
 ### Convenience
 - **Auto-Lock Timeout**: Secures the vault automatically upon inactivity. The timeout duration is configurable.
-- **Clipboard Management**: Immediate copy features with automatic clipboard clearing to avoid leaving sensitive strings in memory.
+- **Clipboard Support**: Copy accounts, passwords, and TOTP codes when needed.
 - **Encrypted Backups**: Built-in support to export and import AES-encrypted JSON backups for securely moving data between trusted systems.
 
 ---

@@ -256,16 +256,33 @@ pub fn set_pattern_lock(state: State<'_, Arc<AppState>>, pattern: String) -> Res
 #[tauri::command]
 pub fn verify_pattern_lock(state: State<'_, Arc<AppState>>, pattern: String) -> Result<bool, String> {
     match crypto::retrieve_pattern() {
-        Ok(Some(hash)) => {
-            let verified = crypto::verify_pattern(&pattern, &hash).map_err(|e| e.to_string())?;
-            if verified {
-                state.session.unlock();
-            }
-            Ok(verified)
-        }
+        Ok(Some(hash)) => verify_pattern_lock_with_hash(&state.session, &pattern, &hash),
         Ok(None) => Err("No pattern set".into()),
         Err(e) => Err(e.to_string()),
     }
+}
+
+fn verify_pattern_lock_with_hash(
+    session: &security::SecuritySession,
+    pattern: &str,
+    stored_hash: &str,
+) -> Result<bool, String> {
+    if let Err(remaining_secs) = session.check_rate_limit() {
+        return Err(format!(
+            "Too many failed attempts. Try again in {} seconds.",
+            remaining_secs
+        ));
+    }
+
+    let verified = crypto::verify_pattern(pattern, stored_hash).map_err(|e| e.to_string())?;
+    if verified {
+        session.reset_failed_attempts();
+        session.unlock();
+    } else {
+        session.record_failed_attempt();
+    }
+
+    Ok(verified)
 }
 
 #[tauri::command]
@@ -570,5 +587,27 @@ pub fn sync_lock_state(
     } else {
         let _ = lock_i.set_text("立刻锁定 (Lock)");
         let _ = lock_i.set_enabled(true);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pattern_ipc_auth_locks_out_after_failed_attempts() {
+        let session = security::SecuritySession::default();
+        let stored_hash = crypto::hash_pattern("[0,1,2,3]").unwrap();
+
+        for _ in 0..5 {
+            let verified =
+                verify_pattern_lock_with_hash(&session, "[4,5,6,7]", &stored_hash).unwrap();
+            assert!(!verified);
+        }
+
+        let err = verify_pattern_lock_with_hash(&session, "[0,1,2,3]", &stored_hash).unwrap_err();
+
+        assert!(err.contains("Too many failed attempts"));
+        assert!(session.require_unlocked().is_err());
     }
 }
